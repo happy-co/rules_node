@@ -15,19 +15,18 @@ export NODE_PATH=$ROOT/{node_path}
 exec "$ROOT/{script_path}" $@
 """
 
-load("//node:internal/node_utils.bzl", "full_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "make_install_cmd")
 
 def node_binary_impl(ctx):
     node = ctx.file._node
     npm = ctx.file._npm
 
-    modules_dir = ctx.new_file(ctx.outputs.executable, "node_modules")
-    cache_path = ".npm_cache"
+    modules_dir = ctx.new_file(ctx.outputs.executable, "node")
 
     cmds = []
     cmds += ["mkdir -p %s" % modules_dir.path]
 
-    cmds += make_install_cmd(ctx, modules_dir, cache_path, use_package = False)
+    cmds += make_install_cmd(ctx, modules_dir, use_package = False)
 
     ctx.action(
         mnemonic = "NodeInstall",

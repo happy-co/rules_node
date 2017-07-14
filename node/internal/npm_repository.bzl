@@ -13,7 +13,7 @@ def _npm_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
     nodedir = node.dirname.dirname
     npm = ctx.path(ctx.attr._npm)
-    cache_path = ctx.path(".npm_cache")
+    cache_path = ctx.path("._npmcache")
 
     modules = []
     for k, v in ctx.attr.deps.items():

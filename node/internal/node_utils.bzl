@@ -33,6 +33,21 @@ def full_path(file_or_root):
         full_path = _root_path(file_or_root)
     return full_path
 
+def package_rel_path(ctx, file):
+    rel_path = file.path
+    if rel_path.startswith(ctx.genfiles_dir.path):
+        rel_path = rel_path[len(ctx.genfiles_dir.path)+1:]
+    if rel_path.startswith(ctx.bin_dir.path):
+        rel_path = rel_path[len(ctx.bin_dir.path)+1:]
+    if len(ctx.label.workspace_root) > 0 and rel_path.startswith(ctx.label.workspace_root):
+        rel_path = rel_path[len(ctx.label.workspace_root)+1:]
+    if len(ctx.label.package) > 0 and rel_path.startswith(ctx.label.package):
+        rel_path = rel_path[len(ctx.label.package)+1:]
+    print("file: %s" % file.path)
+    print("rel_path: %s" % rel_path)
+    return rel_path
+
+
 def get_lib_name(ctx):
     if len(ctx.attr.package_name) > 0:
         return ctx.attr.package_name
@@ -47,7 +62,7 @@ def get_lib_name(ctx):
 # if use_package is true, then package.json should already be in modules_dir/..
 #  - installation will then load the deps into the cache and then install all deps from package.json
 # otherwise - installation loads the deps directly
-def make_install_cmd(ctx, modules_dir, cache_path, use_package = True):
+def make_install_cmd(ctx, modules_dir, use_package = True):
     if use_package and modules_dir.basename != "node_modules":
         fail("modules_dir must end in node_modules")
 
@@ -61,6 +76,8 @@ def make_install_cmd(ctx, modules_dir, cache_path, use_package = True):
     cmds = []
     if use_package:
         cmds += ["cd %s/.." % modules_dir.path]
+
+    cache_path = "._npmcache"
 
     install_cmd = [
         full_path(node),
@@ -91,6 +108,10 @@ def make_install_cmd(ctx, modules_dir, cache_path, use_package = True):
             "> /dev/null"
         ]
         cmds += [" ".join(check_cmd)]
+
+    cmds += ["rm -rf %s" % cache_path]
+
+    if use_package:
         cmds += ["cd - > /dev/null"]
 
     #print("install cmds: \n%s" % "\n".join(cmds))

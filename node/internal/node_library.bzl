@@ -1,4 +1,4 @@
-load("//node:internal/node_utils.bzl", "full_path", "make_install_cmd", "get_lib_name")
+load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd", "get_lib_name")
 
 def node_library_impl(ctx):
     node = ctx.executable._node
@@ -11,27 +11,18 @@ def node_library_impl(ctx):
     stage_name = lib_name + ".npmfiles"
     staging_dir = ctx.new_file(stage_name)
     modules_dir = ctx.new_file("%s/node_modules" % stage_name)
-    cache_path = ".npm_cache"
 
     cmds = []
     cmds += ["mkdir -p %s" % staging_dir.path]
     cmds += ["mkdir -p %s" % modules_dir.path]
 
     for src in srcs:
-        short_path = src.path
-        if short_path.startswith(ctx.genfiles_dir.path):
-            short_path = short_path[len(ctx.genfiles_dir.path)+1:]
-        if len(ctx.label.workspace_root) > 0 and short_path.startswith(ctx.label.workspace_root):
-            short_path = short_path[len(ctx.label.workspace_root)+1:]
-        if len(ctx.label.package) > 0 and short_path.startswith(ctx.label.package):
-            short_path = short_path[len(ctx.label.package)+1:]
-        #print("src: %s" % src.path)
-        #print("short_path: %s" % short_path)
-        dst = ctx.new_file("%s/%s" % (stage_name, short_path))
+        dst = ctx.new_file("%s/%s" % (stage_name, package_rel_path(ctx, src)))
         outs += [dst]
         cmds.append("cp -f %s %s" % (src.path, dst.path))
 
-    cmds += make_install_cmd(ctx, modules_dir, cache_path)
+    cmds += make_install_cmd(ctx, modules_dir)
+
 
     cmds += [" ".join([
         node.path,
@@ -39,8 +30,7 @@ def node_library_impl(ctx):
         "--quiet",
         "--offline",
         "--no-update-notifier",
-        "--cache",
-        cache_path,
+        "--cache ._npmcache",
         "pack",
         staging_dir.path,
         "| xargs -n 1 -I %% mv %% %s" % ctx.outputs.package.path,
@@ -49,6 +39,8 @@ def node_library_impl(ctx):
     # not sure why, but for some reason bazel fails if there are files in .bin
     # this works around it (we don't need .bin for libraries)
     cmds += ["rm -f %s/.bin/*" % modules_dir.path]
+
+    cmds += ["rm -rf ._npmcache"]
 
     #print("cmds: \n%s" % "\n".join(cmds))
 

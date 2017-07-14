@@ -1,6 +1,6 @@
 _ts_filetype = FileType([".ts", ".tsx"])
 
-load("//node:internal/node_utils.bzl", "full_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
 
 def _ts_compile_impl(ctx):
     node = ctx.file._node
@@ -8,7 +8,6 @@ def _ts_compile_impl(ctx):
     tsc = ctx.file._tsc
 
     modules_dir = ctx.new_file("node_modules")
-    cache_path = ".npm_cache"
 
     cmds = []
     cmds += ["mkdir -p %s" % modules_dir.path]
@@ -18,15 +17,7 @@ def _ts_compile_impl(ctx):
     outs = depset()
 
     for src in srcs:
-        short_path = src.path
-        if short_path.startswith(ctx.genfiles_dir.path):
-            short_path = short_path[len(ctx.genfiles_dir.path)+1:]
-        if len(ctx.label.workspace_root) > 0 and short_path.startswith(ctx.label.workspace_root):
-            short_path = short_path[len(ctx.label.workspace_root)+1:]
-        if len(ctx.label.package) > 0 and short_path.startswith(ctx.label.package):
-            short_path = short_path[len(ctx.label.package)+1:]
-        #print("src: %s" % src.path)
-        #print("short_path: %s" % short_path)
+        short_path = package_rel_path(ctx, src)
         dst = ctx.new_file(short_path)
         if short_path.endswith(".ts"):
             outs += [ctx.new_file(short_path[:-3]+".d.ts"),
@@ -37,7 +28,7 @@ def _ts_compile_impl(ctx):
         staged_srcs += [dst]
         cmds.append("cp -f %s %s" % (src.path, dst.path))
 
-    cmds += make_install_cmd(ctx, modules_dir, cache_path)
+    cmds += make_install_cmd(ctx, modules_dir)
 
     ctx.action(
         mnemonic = "TypescriptPrepare",
