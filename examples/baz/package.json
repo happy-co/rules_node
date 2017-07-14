@@ -1,0 +1,8 @@
+{
+  "name": "examples-baz",
+  "version": "0.0.0",
+  "dependencies": {
+    "chalk": "^2.0.1"
+  },
+  "bin": { "baz": "./cli.js" }
+}

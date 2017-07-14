@@ -1,0 +1,12 @@
+{
+  "name": "examples-foo",
+  "version": "0.0.0",
+  "dependencies": {
+    "examples-baz": "0.0.0"
+  },
+  "main": "foo.js",
+  "bin": { "foo": "foo.js"},
+  "description": "An example",
+  "repository": "local",
+  "license": "Apache-2.0"
+}
