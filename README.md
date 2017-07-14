@@ -48,7 +48,7 @@ WORKSPACE rule that downloads and configures the node toolchain
 Version defaults are as follows:
 
 | Tool | Version |
-| :--- | ---:--- |
+| :--- | :------ |
 | node | 6.6.0 |
 | npm | 5.1.0 |
 | typescript | 2.4.1 |
