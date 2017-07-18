@@ -23,10 +23,10 @@ def _ts_compile_impl(ctx):
             outs += [ctx.new_file(short_path[:-3]+".d.ts"),
                      ctx.new_file(short_path[:-3]+".js")]
         else:
-            outs += [ctx.new_file(short_path[:-3]+".d.ts"),
-                     ctx.new_file(short_path[:-3]+".jsx")]
+            outs += [ctx.new_file(short_path[:-4]+".d.ts"),
+                     ctx.new_file(short_path[:-4]+".jsx")]
         staged_srcs += [dst]
-        cmds.append("cp -f %s %s" % (src.path, dst))
+        cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
     cmds += make_install_cmd(ctx, modules_path)
 

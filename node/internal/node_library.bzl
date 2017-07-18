@@ -16,7 +16,7 @@ def node_library_impl(ctx):
 
     for src in srcs:
         dst = "%s/%s" % (staging_path, package_rel_path(ctx, src))
-        cmds.append("cp -f %s %s" % (src.path, dst))
+        cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
     cmds += make_install_cmd(ctx, modules_path)
 
