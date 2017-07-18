@@ -5,24 +5,20 @@ def node_library_impl(ctx):
     npm = ctx.executable._npm
 
     srcs = ctx.files.srcs
-    outs = []
 
     lib_name = get_lib_name(ctx)
-    stage_name = lib_name + ".npmfiles"
-    staging_dir = ctx.new_file(stage_name)
-    modules_dir = ctx.new_file("%s/node_modules" % stage_name)
+    staging_path = "./" + lib_name + ".npmfiles"
+    modules_path = "%s/%s" % (staging_path, "node_modules")
 
     cmds = []
-    cmds += ["mkdir -p %s" % staging_dir.path]
-    cmds += ["mkdir -p %s" % modules_dir.path]
+    cmds += ["mkdir -p %s" % staging_path]
+    cmds += ["mkdir -p %s" % modules_path]
 
     for src in srcs:
-        dst = ctx.new_file("%s/%s" % (stage_name, package_rel_path(ctx, src)))
-        outs += [dst]
-        cmds.append("cp -f %s %s" % (src.path, dst.path))
+        dst = "%s/%s" % (staging_path, package_rel_path(ctx, src))
+        cmds.append("cp -f %s %s" % (src.path, dst))
 
-    cmds += make_install_cmd(ctx, modules_dir)
-
+    cmds += make_install_cmd(ctx, modules_path)
 
     cmds += [" ".join([
         node.path,
@@ -32,13 +28,13 @@ def node_library_impl(ctx):
         "--no-update-notifier",
         "--cache ._npmcache",
         "pack",
-        staging_dir.path,
+        staging_path,
         "| xargs -n 1 -I %% mv %% %s" % ctx.outputs.package.path,
     ])]
 
     # not sure why, but for some reason bazel fails if there are files in .bin
     # this works around it (we don't need .bin for libraries)
-    cmds += ["rm -f %s/.bin/*" % modules_dir.path]
+    cmds += ["rm -f %s/.bin/*" % modules_path]
 
     cmds += ["rm -rf ._npmcache"]
 
@@ -51,7 +47,7 @@ def node_library_impl(ctx):
     ctx.action(
         mnemonic = "NodePack",
         inputs = [node, npm] + srcs + deps.to_list(),
-        outputs = [ctx.outputs.package, staging_dir, modules_dir] + outs,
+        outputs = [ctx.outputs.package],
         command = " && ".join(cmds),
     )
 

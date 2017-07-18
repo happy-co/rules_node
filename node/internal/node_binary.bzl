@@ -26,11 +26,17 @@ def node_binary_impl(ctx):
     cmds = []
     cmds += ["mkdir -p %s" % modules_dir.path]
 
-    cmds += make_install_cmd(ctx, modules_dir, use_package = False)
+    cmds += make_install_cmd(ctx, modules_dir.path, use_package = False)
+
+    #print("cmds: \n%s" % "\n".join(cmds))
+
+    deps = depset()
+    for d in ctx.attr.deps:
+        deps += d.node_library.transitive_deps
 
     ctx.action(
         mnemonic = "NodeInstall",
-        inputs = [node, npm] + ctx.files.deps,
+        inputs = [node, npm] + deps.to_list(),
         outputs = [modules_dir],
         command = " && ".join(cmds),
     )

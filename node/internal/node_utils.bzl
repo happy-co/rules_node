@@ -43,8 +43,8 @@ def package_rel_path(ctx, file):
         rel_path = rel_path[len(ctx.label.workspace_root)+1:]
     if len(ctx.label.package) > 0 and rel_path.startswith(ctx.label.package):
         rel_path = rel_path[len(ctx.label.package)+1:]
-    print("file: %s" % file.path)
-    print("rel_path: %s" % rel_path)
+    #print("file: %s" % file.path)
+    #print("rel_path: %s" % rel_path)
     return rel_path
 
 
@@ -62,9 +62,9 @@ def get_lib_name(ctx):
 # if use_package is true, then package.json should already be in modules_dir/..
 #  - installation will then load the deps into the cache and then install all deps from package.json
 # otherwise - installation loads the deps directly
-def make_install_cmd(ctx, modules_dir, use_package = True):
-    if use_package and modules_dir.basename != "node_modules":
-        fail("modules_dir must end in node_modules")
+def make_install_cmd(ctx, modules_path, use_package = True):
+    if use_package and not modules_path.endswith("node_modules"):
+        fail("modules_path (%s) must end in node_modules" % modules_path)
 
     node = ctx.executable._node
     npm = ctx.executable._npm
@@ -75,7 +75,7 @@ def make_install_cmd(ctx, modules_dir, use_package = True):
 
     cmds = []
     if use_package:
-        cmds += ["cd %s/.." % modules_dir.path]
+        cmds += ["cd %s/.." % modules_path]
 
     cache_path = "._npmcache"
 
@@ -85,7 +85,7 @@ def make_install_cmd(ctx, modules_dir, use_package = True):
         "--loglevel error",
         "--offline",
         "--no-update-notifier",
-        "--global --prefix %s" % modules_dir.path if not use_package else "",
+        "--global --prefix %s" % modules_path if not use_package else "",
         "--cache",
         cache_path,
         "install",
