@@ -2,7 +2,7 @@ load("//node:internal/node_utils.bzl", "execute")
 
 NODE_TOOLCHAIN_BUILD_FILE = """
 package(default_visibility = [ "//visibility:public" ])
-exports_files(["bin/node", "bin/npm", "bin/tsc"])
+exports_files(["bin/node", "bin/npm", "bin/tsc", "bin/yarn"])
 """
 
 def _mirror_path(ctx, workspace_root, path):
@@ -23,6 +23,7 @@ def _node_toolchain_impl(ctx):
     # upgrade bundled npm to specific version
     execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "npm@%s" % ctx.attr.npm_version])
     execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "typescript@%s" % ctx.attr.ts_version])
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "yarn@%s" % ctx.attr.yarn_version])
 
     _mirror_path(ctx, noderoot, "bin")
     _mirror_path(ctx, noderoot, "include")
@@ -38,6 +39,7 @@ _node_toolchain = repository_rule(
     attrs = {
         "npm_version": attr.string(mandatory = True),
         "ts_version": attr.string(mandatory = True),
+        "yarn_version": attr.string(mandatory = True),
         "_linux": attr.label(
             default = Label("@nodejs_linux_amd64//:WORKSPACE"),
             allow_files = True,
@@ -55,7 +57,8 @@ def node_repositories(node_version="6.6.0",
                       linux_sha256="c22ab0dfa9d0b8d9de02ef7c0d860298a5d1bf6cae7413fb18b99e8a3d25648a",
                       darwin_sha256="c8d1fe38eb794ca46aacf6c8e90676eec7a8aeec83b4b09f57ce503509e7a19f",
                       npm_version="5.1.0",
-                      ts_version = "2.4.1"):
+                      ts_version = "2.4.1",
+                      yarn_version = "0.27.5"):
     native.new_http_archive(
         name = "nodejs_linux_amd64",
         url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version=node_version),
@@ -78,4 +81,5 @@ def node_repositories(node_version="6.6.0",
         name = "com_happyco_rules_node_toolchain",
         npm_version = npm_version,
         ts_version = ts_version,
+        yarn_version = yarn_version,
     )

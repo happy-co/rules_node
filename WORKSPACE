@@ -1,6 +1,6 @@
 workspace(name = "com_happyco_rules_node")
 
-load("//node:rules.bzl", "node_repositories", "npm_repository")
+load("//node:rules.bzl", "node_repositories", "npm_repository", "yarn_repository")
 node_repositories()
 
 npm_repository(
@@ -14,4 +14,10 @@ npm_repository(
       "has-flag":"2.0.0",
       "supports-color":"4.2.0"
     },
+)
+
+yarn_repository(
+    name = "yarn",
+    package = "//examples/yarn-baz:package.json",
+    lockfile = "//examples/yarn-baz:yarn.lock",
 )

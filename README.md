@@ -33,6 +33,7 @@ node_repositories()
 | ---: | :---------- |
 | [node_repositories](#node_repositories) | Install node toolchain. |
 | [npm_repository](#npm_repository) | Install a set of npm dependencies. |
+| [yarn_repository](#yarn_repository) | Install yarn managed dependencies. |
 | [npm_library](#npm_library) | Install a set of npm dependencies. |
 | [node_library](#node_library) | Define a local npm module. |
 | [node_binary](#node_binary) | Build or execute a nodejs script. |
@@ -43,7 +44,7 @@ node_repositories()
 ## node_repositories
 
 WORKSPACE rule that downloads and configures the node toolchain
-(`node`, `npm` and `tsc`).
+(`node`, `npm`, `yarn` and `tsc`).
 
 Version defaults are as follows:
 
@@ -51,6 +52,7 @@ Version defaults are as follows:
 | :--- | :------ |
 | node | 6.6.0 |
 | npm | 5.1.0 |
+| yarn | 0.27.5 |
 | typescript | 2.4.1 |
 
 ## npm_repository
@@ -73,6 +75,23 @@ npm_repository(
 
 You can then refer to `@npm_react_stack//react` in the `deps`
 attribute of a `node_binary` or `node_library` rule.
+
+## yarn_repository
+
+Load a set of yarn managed dependencies. Requires a `package.json` and `yarn.lock` to be exported from a package (i.e. `exports_files(["package.json", "yarn.lock"])`)
+
+For example:
+
+```python
+# In WORKSPACE
+load("@com_happyco_rules_node//node:rules.bzl", "yarn_repository")
+
+yarn_repository(
+    name = "yarn-baz",
+    package = "//examples/yarn-baz:package.json",
+    lockfile = "//examples/yarn-baz:yarn.lock",
+)
+```
 
 ## node_library
 
