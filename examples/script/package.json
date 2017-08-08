@@ -1,0 +1,13 @@
+{
+  "name": "examples-script",
+  "version": "0.0.0",
+  "devDependencies": {
+    "examples-baz": "0.0.0"
+  },
+  "scripts": {
+    "build": "mkdir dist && baz > dist/output"
+  },
+  "description": "An example",
+  "repository": "local",
+  "license": "Apache-2.0"
+}

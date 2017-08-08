@@ -2,7 +2,7 @@ load("//node:internal/node_utils.bzl", "execute")
 
 NODE_TOOLCHAIN_BUILD_FILE = """
 package(default_visibility = [ "//visibility:public" ])
-exports_files(["bin/node", "bin/npm", "bin/tsc", "bin/yarn"])
+exports_files(["bin/node", "bin/npm", "bin/tsc", "bin/yarn", "bin/bower"])
 """
 
 def _mirror_path(ctx, workspace_root, path):
@@ -24,6 +24,7 @@ def _node_toolchain_impl(ctx):
     execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "npm@%s" % ctx.attr.npm_version])
     execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "typescript@%s" % ctx.attr.ts_version])
     execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "yarn@%s" % ctx.attr.yarn_version])
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "bower@%s" % ctx.attr.bower_version])
 
     _mirror_path(ctx, noderoot, "bin")
     _mirror_path(ctx, noderoot, "include")
@@ -40,6 +41,7 @@ _node_toolchain = repository_rule(
         "npm_version": attr.string(mandatory = True),
         "ts_version": attr.string(mandatory = True),
         "yarn_version": attr.string(mandatory = True),
+        "bower_version": attr.string(mandatory = True),
         "_linux": attr.label(
             default = Label("@nodejs_linux_amd64//:WORKSPACE"),
             allow_files = True,
@@ -58,7 +60,8 @@ def node_repositories(node_version="6.6.0",
                       darwin_sha256="c8d1fe38eb794ca46aacf6c8e90676eec7a8aeec83b4b09f57ce503509e7a19f",
                       npm_version="5.1.0",
                       ts_version = "2.4.1",
-                      yarn_version = "0.27.5"):
+                      yarn_version = "0.27.5",
+                      bower_version = "1.8.0"):
     native.new_http_archive(
         name = "nodejs_linux_amd64",
         url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version=node_version),
@@ -82,4 +85,5 @@ def node_repositories(node_version="6.6.0",
         npm_version = npm_version,
         ts_version = ts_version,
         yarn_version = yarn_version,
+        bower_version = bower_version,
     )

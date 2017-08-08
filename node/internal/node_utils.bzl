@@ -96,18 +96,19 @@ def make_install_cmd(ctx, modules_path, use_package = True):
     ]
     cmds += [" ".join(install_cmd)]
 
-    if use_package:
-        check_cmd = [
-            full_path(node),
-            full_path(npm),
-            "--offline",
-            "--no-update-notifier",
-            "--cache",
-            cache_path,
-            "ls",
-            "> /dev/null"
-        ]
-        cmds += [" ".join(check_cmd)]
+# TODO npm and yarn have different opinions here - so disabling until worked out
+#    if use_package:
+#        check_cmd = [
+#            full_path(node),
+#            full_path(npm),
+#            "--offline",
+#            "--no-update-notifier",
+#            "--cache",
+#            cache_path,
+#            "ls",
+#            "> /dev/null"
+#        ]
+#        cmds += [" ".join(check_cmd)]
 
     cmds += ["rm -rf %s" % cache_path]
 
