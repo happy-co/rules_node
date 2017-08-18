@@ -28,7 +28,8 @@ def _ts_compile_impl(ctx):
         staged_srcs += [dst]
         cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
-    cmds += make_install_cmd(ctx, modules_path)
+    if len(ctx.attr.deps) > 0:
+        cmds += make_install_cmd(ctx, modules_path)
 
     tsc_cmd = [
         node.path,

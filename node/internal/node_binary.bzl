@@ -65,6 +65,8 @@ node_binary = rule(
     attrs = {
         "script": attr.string(mandatory = True),
         "deps": attr.label_list(
+            mandatory = True,
+            allow_empty = False,
             providers = ["node_library"],
         ),
         "_node": attr.label(

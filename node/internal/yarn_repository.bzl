@@ -24,7 +24,7 @@ def _yarn_repository_impl(ctx):
         node,
         yarn,
         "install",
-        "--pure-lockfile",
+        "--frozen-lockfile",
         "--non-interactive",
         "--cache-folder",
         ctx.path("._yarncache"),
@@ -65,7 +65,7 @@ def _yarn_repository_impl(ctx):
         ]
         execute(ctx, ["/bin/sh", "-c", " ".join(cmd)])
 
-    ctx.file("BUILD", "exports_files([%s])\n" % (",".join(["\"node_modules/%s\"" % module for module in modules])), executable = False)
+    ctx.file("BUILD", "exports_files([\"node_modules\",%s])\n" % (",".join(["\"node_modules/%s\"" % module for module in modules])), executable = False)
 
 yarn_repository = repository_rule(
     implementation = _yarn_repository_impl,

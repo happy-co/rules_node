@@ -11,7 +11,7 @@ def _node_build_impl(ctx):
 
     if ctx.files.modules:
         cmds += [
-            "ln -s %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -a %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
             "mkdir -p %s/.bin" % modules_path,
             "cp %s/.bin/* %s/.bin" % (full_path(ctx.files.modules[0]), modules_path),
         ]

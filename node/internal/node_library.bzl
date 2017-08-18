@@ -18,7 +18,8 @@ def node_library_impl(ctx):
         dst = "%s/%s" % (staging_path, package_rel_path(ctx, src))
         cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
-    cmds += make_install_cmd(ctx, modules_path)
+    if len(ctx.attr.deps) > 0:
+        cmds += make_install_cmd(ctx, modules_path)
 
     cmds += [" ".join([
         node.path,

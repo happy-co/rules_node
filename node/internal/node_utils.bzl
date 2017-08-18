@@ -74,8 +74,6 @@ def make_install_cmd(ctx, modules_path, use_package = True):
         deps += dep.node_library.transitive_deps
 
     cmds = []
-    if use_package:
-        cmds += ["cd %s/.." % modules_path]
 
     cache_path = "._npmcache"
 
@@ -85,7 +83,8 @@ def make_install_cmd(ctx, modules_path, use_package = True):
         "--loglevel error",
         "--offline",
         "--no-update-notifier",
-        "--global --prefix %s" % modules_path if not use_package else "",
+        "--global --prefix",
+        "._npmtemp" if use_package else modules_path,
         "--cache",
         cache_path,
         "install",
@@ -96,25 +95,16 @@ def make_install_cmd(ctx, modules_path, use_package = True):
     ]
     cmds += [" ".join(install_cmd)]
 
-# TODO npm and yarn have different opinions here - so disabling until worked out
-#    if use_package:
-#        check_cmd = [
-#            full_path(node),
-#            full_path(npm),
-#            "--offline",
-#            "--no-update-notifier",
-#            "--cache",
-#            cache_path,
-#            "ls",
-#            "> /dev/null"
-#        ]
-#        cmds += [" ".join(check_cmd)]
+    if use_package:
+        cmds += [
+            "mkdir -p %s" % modules_path,
+            "cp -a ._npmtemp/lib/node_modules/* %s" % (modules_path),
+            "mkdir -p %s/.bin" % (modules_path),
+            "if [ -d ._npmtemp/bin ]; then for f in ._npmtemp/bin/*; do ln -fs ../$(readlink $f | cut -c20-) %s/.bin/$(basename $f); done; fi" % (modules_path),
+        ]
 
     cmds += ["rm -rf %s" % cache_path]
 
-    if use_package:
-        cmds += ["cd - > /dev/null"]
-
-    #print("install cmds: \n%s" % "\n".join(cmds))
+    # print("install cmds: \n%s" % "\n".join(cmds))
 
     return cmds
