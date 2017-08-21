@@ -10,6 +10,9 @@
 
 These rules are derived from [org_pubref_rules_node](https://github.com/pubref/rules_node) but updated to work with sandboxed builds and allow more complex node dependency graphs.
 
+Also supports building Typescript libraries and pulling dependencies from Bower,
+NPM and Yarn.
+
 ## Getting started
 Put `rules_node` in your `WORKSPACE` and load the main repository
 dependencies.  This will download the nodejs toolchain including
@@ -19,7 +22,7 @@ dependencies.  This will download the nodejs toolchain including
 git_repository(
     name = "com_happyco_rules_node",
     remote = "https://github.com/happy-co/rules_node.git",
-    commit = "{HEAD}", # replace with latest version
+    commit = "v0.4.0", # replace with latest version
 )
 
 load("@com_happyco_rules_node//node:rules.bzl", "node_repositories")
@@ -34,9 +37,11 @@ node_repositories()
 | [node_repositories](#node_repositories) | Install node toolchain. |
 | [npm_repository](#npm_repository) | Install a set of npm dependencies. |
 | [yarn_repository](#yarn_repository) | Install yarn managed dependencies. |
+| [bower_repository](#bower_repository) | Install bower managed dependencies. |
 | [npm_library](#npm_library) | Install a set of npm dependencies. |
 | [node_library](#node_library) | Define a local npm module. |
-| [node_binary](#node_binary) | Build or execute a nodejs script. |
+| [node_binary](#node_binary) | Build an executable nodejs script. |
+| [node_build](#node_build) | Execute a nodejs build script. |
 | [ts_compile](#ts_compile) | Build typescript. |
 | [ts_library](#ts_library) | Build a local npm module with typescript. |
 
@@ -44,7 +49,7 @@ node_repositories()
 ## node_repositories
 
 WORKSPACE rule that downloads and configures the node toolchain
-(`node`, `npm`, `yarn` and `tsc`).
+(`node`, `npm`, `yarn`, `bower` and `tsc`).
 
 Version defaults are as follows:
 
@@ -53,6 +58,7 @@ Version defaults are as follows:
 | node | 6.6.0 |
 | npm | 5.1.0 |
 | yarn | 0.27.5 |
+| bower | 1.8.0 |
 | typescript | 2.4.1 |
 
 ## npm_repository
@@ -92,6 +98,30 @@ yarn_repository(
     lockfile = "//examples/yarn-baz:yarn.lock",
 )
 ```
+
+The contents of the repository can be referenced in two ways:
+
+1. Reference the entire `node_modules` folder as `@yarn-baz//:node_modules`
+2. Individual modules as `@yarn-baz//module-name` (as for [npm_repository](#npm_repository)))
+
+## bower_repository
+
+Load a set of bower managed dependencies. Requires a `bower.json` to be exported from a package (i.e. `exports_files(["bower.json"])`)
+
+For example:
+
+```python
+# In WORKSPACE
+load("@com_happyco_rules_node//node:rules.bzl", "bower_repository")
+
+yarn_repository(
+    name = "my-bower",
+    manifest = "//example:bower.json",
+)
+```
+
+The contents of the repository are then available as `@my-bower//:bower_components`
+for use as a src or other input to other rules.
 
 ## node_library
 
@@ -144,6 +174,28 @@ node_binary(
     deps = [
         "//examples/baz:baz_library",
     ],
+)
+```
+
+## node_build
+
+This rule allows running arbitrary node scripts to produce a build. It can
+optionally receive a node_modules folder from `yarn_repository` as well as
+normal `npm_library` dependencies.
+
+```python
+load("@com_happyco_rules_node//node:rules.bzl", "node_build")
+
+exports_files(["package.json", "yarn.lock", "bower.json"])
+
+node_build(
+    name = "script",
+    srcs = ["package.json"],
+    outs = ["dist"],
+    modules = "@yarn-baz//:node_modules",
+    deps = [
+        "//examples/baz:baz_library",
+    ]
 )
 ```
 
