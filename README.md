@@ -114,7 +114,7 @@ For example:
 # In WORKSPACE
 load("@com_happyco_rules_node//node:rules.bzl", "bower_repository")
 
-yarn_repository(
+bower_repository(
     name = "my-bower",
     manifest = "//example:bower.json",
 )
@@ -128,7 +128,7 @@ for use as a src or other input to other rules.
 This rule accepts a list of `srcs` (any file types) and other configuration
 attributes and produces a node package tgz within `bazel-bin`.  The name of the
 module is taken by munging the package label, substituting `/` (slash) with `-`
-(dash) or may be specified with teh `package_name` attribute. For example:
+(dash) or may be specified with the `package_name` attribute. For example:
 
 ```python
 load("//node:rules.bzl", "node_library")
@@ -180,8 +180,8 @@ node_binary(
 ## node_build
 
 This rule allows running arbitrary node scripts to produce a build. It can
-optionally receive a node_modules folder from `yarn_repository` as well as
-normal `npm_library` dependencies.
+optionally receive a `node_modules` folder from `yarn_repository` as well as
+normal `node_library` dependencies.
 
 ```python
 load("@com_happyco_rules_node//node:rules.bzl", "node_build")
