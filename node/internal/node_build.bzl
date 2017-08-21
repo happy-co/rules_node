@@ -11,9 +11,9 @@ def _node_build_impl(ctx):
 
     if ctx.files.modules:
         cmds += [
-            "cp -a %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -aLf %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
             "mkdir -p %s/.bin" % modules_path,
-            "cp %s/.bin/* %s/.bin" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -a %s/.bin/* %s/.bin" % (full_path(ctx.files.modules[0]), modules_path),
         ]
 
     srcs = ctx.files.srcs
@@ -26,7 +26,7 @@ def _node_build_impl(ctx):
             short_path = ""
         dst = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, short_path)
         staged_srcs += [dst]
-        cmds.append("mkdir -p %s && cp -af %s %s" % (dst[:dst.rindex("/")], src.path, dst))
+        cmds.append("mkdir -p %s && cp -aLf %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
     if len(ctx.attr.deps) > 0:
         cmds += make_install_cmd(ctx, modules_path)
