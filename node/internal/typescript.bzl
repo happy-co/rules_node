@@ -38,6 +38,10 @@ def _ts_compile_impl(ctx):
         "--sourceMap",
         "--target", ctx.attr.target,
         "--strict" if ctx.attr.strict else "",
+        "--noImplicitAny" if ctx.attr.noImplicitAny else "",
+        "--removeComments" if ctx.attr.removeComments else "",
+        "--preserveConstEnums" if ctx.attr.preserveConstEnums else "",
+        "--strictNullChecks" if ctx.attr.strictNullChecks else "",
     ] + [f for f in staged_srcs]
 
     cmds += [" ".join(tsc_cmd)]
@@ -79,6 +83,10 @@ ts_compile = rule(
             values = ["ES3", "ES5", "ES6", "ES2015", "ES2016", "ES2017", "ESNext"]
         ),
         "strict": attr.bool(),
+        "noImplicitAny": attr.bool(),
+        "removeComments": attr.bool(),
+        "preserveConstEnums": attr.bool(),
+        "strictNullChecks": attr.bool(),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,

@@ -42,6 +42,7 @@ node_repositories()
 | [node_library](#node_library) | Define a local npm module. |
 | [node_binary](#node_binary) | Build an executable nodejs script. |
 | [node_build](#node_build) | Execute a nodejs build script. |
+| [node_install](#node_install) | Install a set of node modules (for use as data). |
 | [ts_compile](#ts_compile) | Build typescript. |
 | [ts_library](#ts_library) | Build a local npm module with typescript. |
 
@@ -196,6 +197,33 @@ node_build(
     deps = [
         "//examples/baz:baz_library",
     ]
+)
+```
+
+## node_install
+
+This rule installs a set of node modules in the named folder (same name as the rule).
+It can optionally receive a `node_modules` folder from `yarn_repository` as well as
+normal `node_library` dependencies.
+
+The resultant folder is available as runfiles to other rules. This is most
+useful for embedding node modules into another app or for testing.
+
+```python
+load("@com_happyco_rules_node//node:rules.bzl", "node_build")
+
+exports_files(["package.json", "yarn.lock", "bower.json"])
+
+node_install(
+    name = "my-mods",
+    modules = "@yarn-baz//:node_modules",
+    deps = ["//examples/baz:baz_library"],
+)
+
+java_binary(
+    name="my-server",
+    ...
+    resources = [":my-mods"],
 )
 ```
 
