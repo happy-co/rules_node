@@ -35,37 +35,38 @@ def _yarn_repository_impl(ctx):
 
     execute(ctx, cmd)
 
-    modules = [f.basename for f in ctx.path("node_modules").readdir() if not f.basename.startswith(".")]
+    if not ctx.attr.modules_only:
+        modules = [f.basename for f in ctx.path("node_modules").readdir() if not f.basename.startswith(".")]
 
-    for module in modules:
-        deps_cmd = [
-            node,
-            "-p",
-            "deps=require('%s/node_modules/%s/package.json').dependencies;if(deps){JSON.stringify(Object.keys(deps).map(d=>'//'+d))}else{'[]'}" % (ctx.path("."), module)
-        ]
-        deps = execute(ctx, deps_cmd).stdout
-        ctx.file("%s/BUILD" % module, BUILD_FILE.format(
-            name = module,
-            file = "%s.tgz" % module,
-            deps = deps,
-        ), executable = False)
-        cmd = [
-            "cd %s/node_modules/%s" % (ctx.path("."), module),
-            "&&",
-            node,
-            yarn,
-            "pack",
-            "--non-interactive",
-            "--cache-folder",
-            ctx.path("._yarncache"),
-            "--filename",
-            ctx.path("%s/%s.tgz" % (module, module)),
-            "&&",
-            "cd -",
-        ]
-        execute(ctx, ["/bin/sh", "-c", " ".join(cmd)])
+        for module in modules:
+            deps_cmd = [
+                node,
+                "-p",
+                "deps=require('%s/node_modules/%s/package.json').dependencies;if(deps){JSON.stringify(Object.keys(deps).map(d=>'//'+d))}else{'[]'}" % (ctx.path("."), module)
+            ]
+            deps = execute(ctx, deps_cmd).stdout
+            ctx.file("%s/BUILD" % module, BUILD_FILE.format(
+                name = module,
+                file = "%s.tgz" % module,
+                deps = deps,
+            ), executable = False)
+            cmd = [
+                "cd %s/node_modules/%s" % (ctx.path("."), module),
+                "&&",
+                node,
+                yarn,
+                "pack",
+                "--non-interactive",
+                "--cache-folder",
+                ctx.path("._yarncache"),
+                "--filename",
+                ctx.path("%s/%s.tgz" % (module, module)),
+                "&&",
+                "cd -",
+            ]
+            execute(ctx, ["/bin/sh", "-c", " ".join(cmd)])
 
-    ctx.file("BUILD", "exports_files([\"node_modules\",%s])\n" % (",".join(["\"node_modules/%s\"" % module for module in modules])), executable = False)
+    ctx.file("BUILD", "exports_files([\"node_modules\"])\n", executable = False)
 
 yarn_repository = repository_rule(
     implementation = _yarn_repository_impl,
@@ -81,6 +82,7 @@ yarn_repository = repository_rule(
             single_file = True,
             allow_files = ["yarn.lock"],
         ),
+        "modules_only": attr.bool(default = False),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,
