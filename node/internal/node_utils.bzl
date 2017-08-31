@@ -8,7 +8,10 @@ node_attrs = {
     ),
 }
 
-def execute(repository_ctx, cmds, debug = False):
+def execute(repository_ctx, cmds, path = "", debug = False):
+    if path != "":
+      cmd = ["export PATH=%s:$PATH" % path, "&&"] + cmds
+      cmds = ["/bin/sh", "-c", " ".join(cmd)]
     if debug:
       print("cmd: %s" % " ".join(cmds))
     result = repository_ctx.execute(cmds, quiet=not(debug))

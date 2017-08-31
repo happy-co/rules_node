@@ -4,6 +4,7 @@ load("//node:internal/npm_repository.bzl", "BUILD_FILE", "npm_library")
 def _yarn_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
     nodedir = node.dirname.dirname
+    print("nodedir: %s" % nodedir)
     yarn = ctx.path(ctx.attr._yarn)
 
     cmd = [
@@ -33,7 +34,7 @@ def _yarn_repository_impl(ctx):
     if ctx.attr.registry:
         cmd += ["--registry", ctx.attr.registry]
 
-    execute(ctx, cmd)
+    execute(ctx, cmd, path = "%s/bin" % nodedir)
 
     if not ctx.attr.modules_only:
         modules = [f.basename for f in ctx.path("node_modules").readdir() if not f.basename.startswith(".")]

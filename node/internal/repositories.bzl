@@ -21,10 +21,10 @@ def _node_toolchain_impl(ctx):
         fail("Unsupported operating system: " + os)
 
     # upgrade bundled npm to specific version
-    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "npm@%s" % ctx.attr.npm_version])
-    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "typescript@%s" % ctx.attr.ts_version])
-    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "yarn@%s" % ctx.attr.yarn_version])
-    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "bower@%s" % ctx.attr.bower_version])
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "--prefix", noderoot, "npm@%s" % ctx.attr.npm_version], path = "%s/bin" % noderoot)
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "--prefix", noderoot, "typescript@%s" % ctx.attr.ts_version], path = "%s/bin" % noderoot)
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "--prefix", noderoot, "yarn@%s" % ctx.attr.yarn_version], path = "%s/bin" % noderoot)
+    execute(ctx, ["%s/bin/node" % noderoot, "%s/bin/npm" % noderoot, "install", "-g", "--prefix", noderoot, "bower@%s" % ctx.attr.bower_version], path = "%s/bin" % noderoot)
 
     _mirror_path(ctx, noderoot, "bin")
     _mirror_path(ctx, noderoot, "include")
