@@ -4,7 +4,6 @@ load("//node:internal/npm_repository.bzl", "BUILD_FILE", "npm_library")
 def _yarn_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
     nodedir = node.dirname.dirname
-    print("nodedir: %s" % nodedir)
     yarn = ctx.path(ctx.attr._yarn)
 
     cmd = [
