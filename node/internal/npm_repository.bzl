@@ -13,6 +13,7 @@ def _npm_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
     nodedir = node.dirname.dirname
     npm = ctx.path(ctx.attr._npm)
+    install_path = ctx.path("._npmtemp")
     cache_path = ctx.path("._npmcache")
 
     modules = []
@@ -27,6 +28,8 @@ def _npm_repository_impl(ctx):
         npm,
         "install",
         "--global",
+        "--prefix",
+        install_path,
         "--cache",
         cache_path,
     ]
@@ -59,7 +62,7 @@ def _npm_repository_impl(ctx):
         deps_cmd = [
             node,
             "-p",
-            "deps=require('%s/lib/node_modules/%s/package.json').dependencies;if(deps){JSON.stringify(Object.keys(deps).map(d=>'//'+d))}else{'[]'}" % (nodedir, module)
+            "deps=require('%s/lib/node_modules/%s/package.json').dependencies;if(deps){JSON.stringify(Object.keys(deps).map(d=>'//'+d))}else{'[]'}" % (install_path, module)
         ]
         deps = execute(ctx, deps_cmd).stdout
         ctx.file("%s/BUILD" % module, BUILD_FILE.format(
