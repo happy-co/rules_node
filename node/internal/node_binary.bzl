@@ -4,7 +4,7 @@ set -e
 # Run it but wrap all calls to paths in a call to find. The call to find will
 # search recursively through the filesystem to find the appropriate runfiles
 # directory if that is necessary.
-ROOT=$(find $(dirname "$0") | grep -m 1 "{script_path}" | sed 's|{script_path}$||')
+ROOT=$(find -L $(dirname "$0") | grep -m 1 "{script_path}" | sed 's|{script_path}$||')
 
 # Resolve to 'this' node instance if other scripts
 # have '/usr/bin/env node' shebangs
