@@ -19,23 +19,6 @@ def execute(repository_ctx, cmds, path = "", debug = False):
         fail(" ".join(cmds) + "failed: %s" %(result.stderr))
     return result
 
-def _root_path(root):
-    #print("root: %s" % root)
-    return str(root).split("[")[0]
-
-def _file_path(file):
-    #print("file: %s" % file)
-    return str(file).split("]")[-1]
-
-def full_path(file_or_root):
-    full_path = file_or_root.path
-    if hasattr(file_or_root, "root"):
-        full_path = "%s/%s" % (_root_path(file_or_root.root), _file_path(file_or_root))
-        #print("%s => %s" % (str(file_or_root), full_path))
-    else:
-        full_path = _root_path(file_or_root)
-    return full_path
-
 def package_rel_path(ctx, file):
     rel_path = file.path
     if rel_path.startswith(ctx.genfiles_dir.path):
@@ -46,8 +29,8 @@ def package_rel_path(ctx, file):
         rel_path = rel_path[len(ctx.label.workspace_root)+1:]
     if len(ctx.label.package) > 0 and rel_path.startswith(ctx.label.package):
         rel_path = rel_path[len(ctx.label.package)+1:]
-    #print("file: %s" % file.path)
-    #print("rel_path: %s" % rel_path)
+    # print("file: %s" % file.path)
+    # print("rel_path: %s" % rel_path)
     return rel_path
 
 
@@ -81,8 +64,8 @@ def make_install_cmd(ctx, modules_path, use_package = True):
     cache_path = "._npmcache"
 
     install_cmd = [
-        full_path(node),
-        full_path(npm),
+        node.path,
+        npm.path,
         "--loglevel error",
         "--offline",
         "--no-update-notifier",
@@ -93,7 +76,7 @@ def make_install_cmd(ctx, modules_path, use_package = True):
         "install",
         "--no-save",
         "--save=false",
-        " ".join([full_path(f) for f in deps.to_list()]),
+        " ".join([f.path for f in deps.to_list()]),
         "> /dev/null",
     ]
     cmds += [" ".join(install_cmd)]

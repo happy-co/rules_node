@@ -114,6 +114,7 @@ npm_library = rule(
     attrs = {
         "srcs": attr.label(
             allow_files = [".tgz"],
+            single_file = True,
         ),
         "deps": attr.label_list(
             providers = ["node_library"],

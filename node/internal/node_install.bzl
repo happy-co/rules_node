@@ -1,4 +1,4 @@
-load("//node:internal/node_utils.bzl", "full_path", "package_rel_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
 
 def _node_install_impl(ctx):
     node = ctx.file._node
@@ -10,11 +10,11 @@ def _node_install_impl(ctx):
     cmds = []
     cmds += ["mkdir -p %s" % modules_path]
 
-    if ctx.files.modules:
+    if ctx.file.modules:
         cmds += [
-            "cp -aLf %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -aLf %s/* %s" % (ctx.file.modules.path, modules_path),
             "mkdir -p %s/.bin" % modules_path,
-            "cp -a %s/.bin/* %s/.bin" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -a %s/.bin/* %s/.bin" % (ctx.file.modules.path, modules_path),
         ]
 
     if len(ctx.attr.deps) > 0:

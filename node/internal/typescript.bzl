@@ -36,6 +36,7 @@ def _ts_compile_impl(ctx):
         tsc.path,
         "--declaration",
         "--sourceMap",
+        "--moduleResolution node",
         "--target", ctx.attr.target,
         "--strict" if ctx.attr.strict else "",
         "--noImplicitAny" if ctx.attr.noImplicitAny else "",
@@ -54,7 +55,7 @@ def _ts_compile_impl(ctx):
 
     ctx.action(
         mnemonic = "Typescript",
-        inputs = [node, tsc] + srcs + deps.to_list(),
+        inputs = [node, npm, tsc] + srcs + deps.to_list(),
         outputs = outs.to_list(),
         command = " && ".join(cmds),
         env = {

@@ -1,4 +1,4 @@
-load("//node:internal/node_utils.bzl", "full_path", "package_rel_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
 
 def _node_build_impl(ctx):
     node = ctx.file._node
@@ -6,27 +6,31 @@ def _node_build_impl(ctx):
 
     modules_path = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, "node_modules")
 
+    srcs = []
+
     cmds = []
     cmds += ["mkdir -p %s" % modules_path]
 
-    if ctx.files.modules:
+    if ctx.file.modules:
         cmds += [
-            "cp -aLf %s/* %s" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -aLf %s/* %s" % (ctx.file.modules.path, modules_path),
             "mkdir -p %s/.bin" % modules_path,
-            "cp -a %s/.bin/* %s/.bin" % (full_path(ctx.files.modules[0]), modules_path),
+            "cp -a %s/.bin/* %s/.bin" % (ctx.file.modules.path, modules_path),
         ]
+        srcs += [ctx.file.modules]
 
-    srcs = ctx.files.srcs
     staged_srcs = []
     outs = depset(ctx.outputs.outs)
 
-    for src in srcs:
+    for src in ctx.files.srcs:
         short_path = package_rel_path(ctx, src)
         if short_path.startswith("external/"): # don't map folders for external repos
             short_path = ""
         dst = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, short_path)
         staged_srcs += [dst]
         cmds.append("mkdir -p %s && cp -aLf %s %s" % (dst[:dst.rindex("/")], src.path, dst))
+
+    srcs += ctx.files.srcs
 
     if len(ctx.attr.deps) > 0:
         cmds += make_install_cmd(ctx, modules_path)
@@ -36,8 +40,8 @@ def _node_build_impl(ctx):
 
     run_cmd = [
         "PATH=$PATH",
-        full_path(node),
-        full_path(npm),
+        "$HOME/%s" % (node.path),
+        "$HOME/%s" % (npm.path),
         "run-script",
         ctx.attr.script,
         "--offline",

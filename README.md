@@ -22,7 +22,7 @@ dependencies.  This will download the nodejs toolchain including
 git_repository(
     name = "com_happyco_rules_node",
     remote = "https://github.com/happy-co/rules_node.git",
-    commit = "v0.5.0", # replace with latest version
+    commit = "v0.6.0", # replace with latest version
 )
 
 load("@com_happyco_rules_node//node:rules.bzl", "node_repositories")
