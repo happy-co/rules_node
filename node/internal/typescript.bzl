@@ -1,16 +1,16 @@
 _ts_filetype = FileType([".ts", ".tsx"])
 
-load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "node_install", "NodeModule", "package_rel_path")
 
 def _ts_compile_impl(ctx):
     node = ctx.file._node
     npm = ctx.file._npm
     tsc = ctx.file._tsc
 
-    modules_path = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, "node_modules")
+    modules_path = ctx.actions.declare_directory("node_modules")
+    node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
 
     cmds = []
-    cmds += ["mkdir -p %s" % modules_path]
 
     srcs = ctx.files.srcs
     staged_srcs = []
@@ -27,9 +27,6 @@ def _ts_compile_impl(ctx):
                      ctx.new_file(short_path[:-4]+".jsx")]
         staged_srcs += [dst]
         cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
-
-    if len(ctx.attr.deps) > 0:
-        cmds += make_install_cmd(ctx, modules_path)
 
     tsc_cmd = [
         node.path,
@@ -49,11 +46,11 @@ def _ts_compile_impl(ctx):
 
     #print("cmds: \n%s" % "\n".join(cmds))
 
-    deps = depset()
+    deps = depset([modules_path])
     for d in ctx.attr.deps:
-        deps += d.node_library.transitive_deps
+        deps += [dd.file for dd in d[NodeModule].deps]
 
-    ctx.action(
+    ctx.actions.run_shell(
         mnemonic = "Typescript",
         inputs = [node, npm, tsc] + srcs + deps.to_list(),
         outputs = outs.to_list(),
@@ -63,11 +60,12 @@ def _ts_compile_impl(ctx):
         },
     )
 
-    return struct(
-        files = outs,
-        runfiles = ctx.runfiles([], outs, collect_data = True),
-        node_library = struct(transitive_deps = deps)
-    )
+    return [
+        DefaultInfo(
+            files = outs,
+            runfiles = ctx.runfiles([], outs, collect_data = True),
+        )
+    ]
 
 ts_compile = rule(
     _ts_compile_impl,
@@ -77,7 +75,7 @@ ts_compile = rule(
             allow_files = _ts_filetype,
         ),
         "deps": attr.label_list(
-            providers = ["node_library"],
+            providers = [NodeModule],
         ),
         "target": attr.string(
             default = "ES3",
@@ -106,6 +104,13 @@ ts_compile = rule(
             default = Label("@com_happyco_rules_node_toolchain//:bin/tsc"),
             single_file = True,
             allow_files = True,
+            cfg = "host",
+        ),
+        "_link_bins": attr.label(
+            default = Label("//node/tools:link_bins.js"),
+            single_file = True,
+            allow_files = True,
+            executable = True,
             cfg = "host",
         ),
     },

@@ -1,93 +1,99 @@
-load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd", "get_lib_name")
+load("//node:internal/node_utils.bzl", "merge_deps", "NodeModule", "ModuleGroup", "get_modules")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
-def node_library_impl(ctx):
-    node = ctx.executable._node
-    npm = ctx.executable._npm
-
-    srcs = ctx.files.srcs
-
-    lib_name = get_lib_name(ctx)
-    staging_path = "./" + lib_name + ".npmfiles"
-    modules_path = "%s/%s" % (staging_path, "node_modules")
-
-    cmds = []
-    cmds += ["mkdir -p %s" % staging_path]
-    cmds += ["mkdir -p %s" % modules_path]
-
-    for src in srcs:
-        dst = "%s/%s" % (staging_path, package_rel_path(ctx, src))
-        cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
-
-    if len(ctx.attr.deps) > 0:
-        cmds += make_install_cmd(ctx, modules_path)
-
-    cmds += [" ".join([
-        node.path,
-        npm.path,
-        "--quiet",
-        "--offline",
-        "--no-update-notifier",
-        "--cache ._npmcache",
-        "pack",
-        staging_path,
-        "| xargs -n 1 -I %% mv %% %s" % ctx.outputs.package.path,
-    ])]
-
-    # not sure why, but for some reason bazel fails if there are files in .bin
-    # this works around it (we don't need .bin for libraries)
-    cmds += ["rm -f %s/.bin/*" % modules_path]
-
-    cmds += ["rm -rf ._npmcache"]
-
-    #print("cmds: \n%s" % "\n".join(cmds))
-
-    deps = depset()
-    for d in ctx.attr.deps:
-        deps += d.node_library.transitive_deps
-
-    ctx.action(
-        mnemonic = "NodePack",
-        inputs = [node, npm] + srcs + deps.to_list(),
-        outputs = [ctx.outputs.package],
-        command = " && ".join(cmds),
-    )
-
-    deps += [ctx.outputs.package]
-    return struct(
-        files = depset([ctx.outputs.package]),
-        node_library = struct(
-            name = lib_name,
-            label = ctx.label,
-            transitive_deps = deps,
+def _node_module_impl(ctx):
+    merged = merge_deps(get_modules(ctx.attr.deps))
+    return [
+        DefaultInfo(
+            files = depset(ctx.files.srcs),
         ),
-    )
+        NodeModule(
+            name = ctx.attr.package_name if len(ctx.attr.package_name) > 0 else ctx.label.name,
+            label = ctx.label,
+            file = ctx.file.srcs,
+            deps = merged,
+            wrapped_deps = get_modules(ctx.attr.wrapped_deps),
+        )
+    ]
 
-node_library = rule(
-    node_library_impl,
+node_module = rule(
+    _node_module_impl,
     attrs = {
-        "srcs": attr.label_list(
-            allow_files = True,
+        "package_name": attr.string(), # bazel doesn't appear to allow a rule to read data from a file so need to specify this here
+        "srcs": attr.label(
+            allow_files = [".tar.gz"],
+            mandatory = True,
+            single_file = True,
         ),
         "deps": attr.label_list(
-            providers = ["node_library"],
+            providers = [[NodeModule], [ModuleGroup]],
         ),
-        "package_name": attr.string(), # bazel doesn't appear to allow a rule to read data from a file so need to specify this here
-        "_node": attr.label(
-            default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
-            single_file = True,
-            allow_files = True,
-            executable = True,
-            cfg = "host",
+        "wrapped_deps": attr.label_list(
+            providers = [[NodeModule], [ModuleGroup]],
         ),
-        "_npm": attr.label(
-            default = Label("@com_happyco_rules_node_toolchain//:bin/npm"),
-            single_file = True,
-            allow_files = True,
-            executable = True,
-            cfg = "host",
-        ),
-    },
-    outputs = {
-        "package": "%{name}.tgz",
     },
 )
+
+def _module_group_impl(ctx):
+    modules = depset()
+    for s in ctx.attr.srcs:
+        if ModuleGroup in s:
+            modules += s[ModuleGroup].modules
+        else:
+            modules += [s[NodeModule]]
+    return [ModuleGroup(modules = modules)]
+
+module_group = rule(
+    _module_group_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            mandatory = True,
+            providers = [[NodeModule], [ModuleGroup]],
+        ),
+    },
+)
+
+def node_library(name, srcs, package_name = "", deps = [], indeps = [], wrapped_deps = [], visibility = None):
+    if package_name == "":
+        package_name = name
+    srcs_by_pkg = {}
+    for s in srcs:
+        pkg_name = Label("//%s" % native.package_name()).relative(s).package
+        ss = srcs_by_pkg.get(pkg_name, [])
+        ss.append(s)
+        srcs_by_pkg[pkg_name] = ss
+    for p in srcs_by_pkg:
+        pkg_tar(
+            name = "%s-%s" % (name, p.replace("/", "_")),
+            strip_prefix = "." if p == native.package_name() else "/%s" % p,
+            package_dir = "/",
+            srcs = srcs_by_pkg[p],
+        )
+    pkg_tar(
+        name = "%s-package" % (name),
+        extension = "tar.gz",
+        deps = [":%s-%s" % (name, p.replace("/", "_")) for p in srcs_by_pkg.keys()],
+    )
+    if indeps:
+        stripped_deps = [d for d in deps if not d in indeps]
+        # print("\n%s\n%s\n%s" % (package_name, stripped_deps, indeps))
+        node_module(
+            name = "node_indep",
+            package_name = package_name,
+            srcs = ":%s-package" % (name),
+            deps = stripped_deps,
+            wrapped_deps = wrapped_deps,
+        )
+        module_group(
+            name = name,
+            srcs = [":node_indep"] + indeps,
+        )
+    else:
+        node_module(
+            name = name,
+            package_name = package_name,
+            srcs = ":%s-package" % (name),
+            deps = deps,
+            wrapped_deps = wrapped_deps,
+            visibility = visibility,
+        )

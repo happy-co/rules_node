@@ -1,15 +1,17 @@
-load("//node:rules.bzl", "node_library", "node_binary")
+package(default_visibility = ["//visibility:public"])
+
+load("@com_happyco_rules_node//node:rules.bzl", "node_library", "node_binary")
 
 node_library(
-    name = "foo_library",
+    name = "node_module",
     srcs = ["package.json", "foo.js"],
     deps = [
-        "//examples/baz:baz_library",
+        "//examples/bar:node_module",
     ]
 )
 
 node_binary(
     name="foo",
     script="foo",
-    deps = [":foo_library"],
+    deps = [":node_module"],
 )

@@ -1,42 +1,26 @@
-load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", "node_install", "NodeModule", "ModuleGroup", "package_rel_path", "get_modules")
 
 def _node_build_impl(ctx):
+    modules_path = ctx.actions.declare_directory("node_modules")
+    modules = get_modules(ctx.attr.deps)
+    node_install(ctx, modules_path, modules)
+
     node = ctx.file._node
     npm = ctx.file._npm
 
-    modules_path = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, "node_modules")
-
-    srcs = []
-
     cmds = []
-    cmds += ["mkdir -p %s" % modules_path]
-
-    if ctx.file.modules:
-        cmds += [
-            "cp -aLf %s/* %s" % (ctx.file.modules.path, modules_path),
-            "mkdir -p %s/.bin" % modules_path,
-            "cp -a %s/.bin/* %s/.bin" % (ctx.file.modules.path, modules_path),
-        ]
-        srcs += [ctx.file.modules]
-
-    staged_srcs = []
-    outs = depset(ctx.outputs.outs)
 
     for src in ctx.files.srcs:
         short_path = package_rel_path(ctx, src)
         if short_path.startswith("external/"): # don't map folders for external repos
             short_path = ""
-        dst = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, short_path)
-        staged_srcs += [dst]
-        cmds.append("mkdir -p %s && cp -aLf %s %s" % (dst[:dst.rindex("/")], src.path, dst))
+        dst = "%s/%s" % (modules_path.dirname, short_path)
+        if dst[:dst.rindex("/")] != modules_path.dirname:
+            cmds.append("mkdir -p %s" % (dst[:dst.rindex("/")]))
+        cmds.append("cp -aLf %s %s" % (src.path, dst))
 
-    srcs += ctx.files.srcs
-
-    if len(ctx.attr.deps) > 0:
-        cmds += make_install_cmd(ctx, modules_path)
-
-    cmds += ["export HOME=`pwd`"]
-    cmds += ["cd %s/%s" % (ctx.bin_dir.path, ctx.label.package)]
+    cmds.append("export HOME=`pwd`")
+    cmds.append("cd %s" % (modules_path.dirname))
 
     run_cmd = [
         "PATH=$PATH",
@@ -49,25 +33,28 @@ def _node_build_impl(ctx):
         "--scripts-prepend-node-path",
     ]
 
-    cmds += [" ".join(run_cmd)]
+    cmds.append(" ".join(run_cmd))
 
     #print("cmds: \n%s" % "\n".join(cmds))
 
-    deps = depset()
-    for d in ctx.attr.deps:
-        deps += d.node_library.transitive_deps
+    deps = depset([modules_path])
+    for d in modules:
+        deps += [dd.file for dd in d.deps]
 
-    ctx.action(
+    ctx.actions.run_shell(
         mnemonic = "NodeBuild",
-        inputs = [node, npm] + srcs + deps.to_list(),
-        outputs = outs.to_list(),
+        inputs = [node, npm] + ctx.files.srcs + deps.to_list(),
+        outputs = ctx.outputs.outs,
         command = " && ".join(cmds),
     )
 
-    return struct(
-        files = outs,
-        runfiles = ctx.runfiles([], outs, collect_data = True),
-    )
+    outs = depset(ctx.outputs.outs)
+    return [
+        DefaultInfo(
+            files = outs,
+            runfiles = ctx.runfiles([], outs, collect_data = True),
+        )
+    ]
 
 node_build = rule(
     _node_build_impl,
@@ -76,12 +63,8 @@ node_build = rule(
             mandatory = True,
             allow_files = True,
         ),
-        "modules": attr.label(
-            single_file = True,
-            allow_files = FileType(["node_modules"]),
-        ),
         "deps": attr.label_list(
-            providers = ["node_library"],
+            providers = [[NodeModule], [ModuleGroup]],
         ),
         "script": attr.string(default = "build"),
         "outs": attr.output_list(),
@@ -94,6 +77,13 @@ node_build = rule(
         ),
         "_npm": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/npm"),
+            single_file = True,
+            allow_files = True,
+            executable = True,
+            cfg = "host",
+        ),
+        "_link_bins": attr.label(
+            default = Label("//node/tools:link_bins.js"),
             single_file = True,
             allow_files = True,
             executable = True,

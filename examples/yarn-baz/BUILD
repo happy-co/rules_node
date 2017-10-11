@@ -1,18 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//node:rules.bzl", "node_library", "node_binary")
+load("@com_happyco_rules_node//node:rules.bzl", "node_library", "node_binary")
 
 node_library(
-    name = "baz_library",
+    name = "node_module",
     package_name = "examples-baz",
     srcs = glob(["package.json", "*.js"]),
-    deps = ["@yarn//chalk"],
+    deps = ["@yarn//chalk:node_module"],
 )
 
 node_binary(
   name = "baz",
   script = "baz",
-  deps = [":baz_library"],
+  deps = [":node_module"],
 )
 
 exports_files(["package.json", "yarn.lock"])

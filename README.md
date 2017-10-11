@@ -1,34 +1,38 @@
-<table><tr>
-<td><img src="https://github.com/pubref/rules_protobuf/blob/master/images/bazel.png" width="120"/></td>
-<td><img src="https://nodejs.org/static/images/logo.svg" width="120"/></td>
-</tr><tr>
-<td>Bazel</td>
-<td>NodeJs</td>
-</tr></table>
+# rules_node [![Build Status](https://travis-ci.org/happy-co/rules_node.svg?branch=master)](https://travis-ci.org/happy-co/rules_node)
 
-# `rules_node` [![Build Status](https://travis-ci.org/happy-co/rules_node.svg?branch=master)](https://travis-ci.org/happy-co/rules_node)
-
-These rules are derived from [org_pubref_rules_node](https://github.com/pubref/rules_node) but updated to work with sandboxed builds and allow more complex node dependency graphs.
+These rules are derived from [org_pubref_rules_node](https://github.com/pubref/rules_node)
+but substantially reworked to support sandboxed builds and allow more complex
+node dependency graphs.
 
 Also supports building Typescript libraries and pulling dependencies from Bower,
 NPM and Yarn.
 
 ## Getting started
-Put `rules_node` in your `WORKSPACE` and load the main repository
-dependencies.  This will download the nodejs toolchain including
-`node` (6.6.x) and `npm` (5.x).
+Put `rules_node` in your `WORKSPACE` and load the main repository dependencies.
+This will download the nodejs toolchain including `node` (6.x).
 
 ```python
 git_repository(
     name = "com_happyco_rules_node",
     remote = "https://github.com/happy-co/rules_node.git",
-    commit = "v0.6.0", # replace with latest version
+    commit = "v1.0.0", # replace with latest version
 )
 
 load("@com_happyco_rules_node//node:rules.bzl", "node_repositories")
 
 node_repositories()
 ```
+
+## Changes from pre-1.0 release
+The 1.0 release has removed support for providing a pre-provisioned `node_modules`
+folder (such as by `yarn_repository`) and instead such repositories can be added
+directly as dependencies.
+
+To upgrade, remove the `modules` attribute from your build rule and add to `deps`.
+
+Package naming has been simplified to use just the rule name if `package_name`
+is unset. To keep the previous auto-munged package name, provide it in the
+`package_name` attribute.
 
 # Rules
 
@@ -38,17 +42,17 @@ node_repositories()
 | [npm_repository](#npm_repository) | Install a set of npm dependencies. |
 | [yarn_repository](#yarn_repository) | Install yarn managed dependencies. |
 | [bower_repository](#bower_repository) | Install bower managed dependencies. |
-| [npm_library](#npm_library) | Install a set of npm dependencies. |
-| [node_library](#node_library) | Define a local npm module. |
+| [node_library](#node_library) | Define a local node module. |
+| [node_module](#node_module) | Expose a tgz as a node module. |
+| [module_group](#module_group) | Group node modules for easier dependencies. |
 | [node_binary](#node_binary) | Build an executable nodejs script. |
 | [node_build](#node_build) | Execute a nodejs build script. |
 | [node_install](#node_install) | Install a set of node modules (for use as data). |
 | [ts_compile](#ts_compile) | Build typescript. |
-| [ts_library](#ts_library) | Build a local npm module with typescript. |
+| [ts_library](#ts_library) | Build a local node module with typescript. |
 
 
 ## node_repositories
-
 WORKSPACE rule that downloads and configures the node toolchain
 (`node`, `npm`, `yarn`, `bower` and `tsc`).
 
@@ -56,14 +60,13 @@ Version defaults are as follows:
 
 | Tool | Version |
 | :--- | :------ |
-| node | 6.6.0 |
-| npm | 5.1.0 |
-| yarn | 0.27.5 |
-| bower | 1.8.0 |
-| typescript | 2.4.1 |
+| node | 6.11.4 |
+| npm | 5.5.1 |
+| yarn | 1.2.1 |
+| bower | 1.8.2 |
+| typescript | 2.5.3 |
 
 ## npm_repository
-
 Load a set of npm dependencies as node_libraries in an external workspace.
 For example:
 
@@ -80,12 +83,40 @@ npm_repository(
 )
 ```
 
-You can then refer to `@npm_react_stack//react` in the `deps`
-attribute of a `node_binary` or `node_library` rule.
+You can then refer to `@npm_react_stack//react:node_module` in the `deps`
+attribute of a `node_binary` or `node_library` rule. You can also
+depend on the entire repository as `@npm_react_stack//:node_modules`.
+
+*Note:* if the package contains any files named `build`, they will be renamed
+to `build.js` to prevent Bazel interpreting the folder as a package.
+
+### Breaking Dependency Cycles
+Often node modules will have cyclic dependencies which need to be broken for
+Bazel which prohibits them. Do this by adding an `indeps` attribute.
+
+For example, given a cycle:
+```
+.-> @npm//babel-core:node_module
+|   @npm//babel-register:node_module
+`-- @npm//babel-core:node_module
+```
+
+You need to apply a break between `babel-register` and `babel-core`:
+
+```python
+npm_repository(
+  name = "npm",
+  deps = { "babel-core": "5.8.38" },
+  indeps = {
+    "babel-register": ["babel-core"],
+  },
+)
+```
 
 ## yarn_repository
-
-Load a set of yarn managed dependencies. Requires a `package.json` and `yarn.lock` to be exported from a package (i.e. `exports_files(["package.json", "yarn.lock"])`)
+Load a set of yarn managed dependencies. Requires a `package.json` and
+`yarn.lock` to be exported from a package
+(i.e. `exports_files(["package.json", "yarn.lock"])`)
 
 For example:
 
@@ -103,11 +134,17 @@ yarn_repository(
 The contents of the repository can be referenced in two ways:
 
 1. Reference the entire `node_modules` folder as `@yarn-baz//:node_modules`
-2. Individual modules as `@yarn-baz//module-name` (as for [npm_repository](#npm_repository)))
+2. Individual modules as `@yarn-baz//module-name:node_module`
+
+Break dependency cycles is the same as for `npm_repository`: by adding an
+`indeps` attribute.
+
+*Note:* if the package contains any files named `build`, they will be renamed
+to `build.js` to prevent Bazel interpreting the folder as a package.
 
 ## bower_repository
-
-Load a set of bower managed dependencies. Requires a `bower.json` to be exported from a package (i.e. `exports_files(["bower.json"])`)
+Load a set of bower managed dependencies. Requires a `bower.json` to be
+exported from a package (i.e. `exports_files(["bower.json"])`)
 
 For example:
 
@@ -125,17 +162,17 @@ The contents of the repository are then available as `@my-bower//:bower_componen
 for use as a src or other input to other rules.
 
 ## node_library
-
-This rule accepts a list of `srcs` (any file types) and other configuration
-attributes and produces a node package tgz within `bazel-bin`.  The name of the
-module is taken by munging the package label, substituting `/` (slash) with `-`
-(dash) or may be specified with the `package_name` attribute. For example:
+This macro accepts a list of `srcs` (any file types) and other configuration
+attributes and produces a node package tgz within `bazel-bin` named
+`{name}-package.tar.gz`. The package is also exposed as a `node_module` for use
+as a dependency in other packages or rules.
 
 ```python
-load("//node:rules.bzl", "node_library")
+load("@com_happyco_rules_node//node:rules.bzl", "node_library")
 
 node_library(
-    name = "baz_library",
+    name = "node_module",
+    package_name = "examples-baz",
     srcs = [
         "qux.js",
     ],
@@ -153,15 +190,41 @@ This packaging/install cycle occurs on demand and is a nicer way to
 develop nodejs applications with clear dependency requirements.  Bazel
 makes this very clean and convenient.
 
-## npm_library
+## node_module
+This rule exposes a tgz package as a node module that can be depended on by
+other rules.
 
-This rule allows a node package tgz to be provided as a dependency to
-other node rules. It is used internally by `npm_repository` but is exposed
-if you would prefer to have greater control over packages (for example to
-use `http_archive` to verify the package).
+```python
+load("@com_happyco_rules_node//node:rules.bzl", "node_module")
+
+node_module(
+    name = "node_module",
+    package_name = "examples-baz",
+    srcs = [
+        "package.tar.gz",
+    ],
+)
+```
+
+## module_group
+This rule allows for aggregating multiple `node_module`s as a single name, for
+easier dependencies on groups of modules.
+
+```python
+load("@com_happyco_rules_node//node:rules.bzl", "module_group")
+
+module_group(
+    name = "node_modules",
+    srcs = [
+        ":foo_library",
+        ":bar_library",
+    ],
+)
+```
+
+This rule is used internally by `npm_repository` and `yarn_repository`.
 
 ## node_binary
-
 Creates an executable script that will run the node script named in the
 `script` attribute. Dependencies are installed into a local node context and
 a shell script generated that ensures the correct node and context are used.
@@ -173,38 +236,35 @@ node_binary(
     name = "baz",
     script = "baz",
     deps = [
-        "//examples/baz:baz_library",
+        "//examples/baz:node_module",
     ],
 )
 ```
 
 ## node_build
-
-This rule allows running arbitrary node scripts to produce a build. It can
-optionally receive a `node_modules` folder from `yarn_repository` as well as
-normal `node_library` dependencies.
+This rule allows running arbitrary node scripts to produce a build. By default
+executes the `build` script, but this can be overridden with the `script`
+attribute.
 
 ```python
 load("@com_happyco_rules_node//node:rules.bzl", "node_build")
 
-exports_files(["package.json", "yarn.lock", "bower.json"])
+exports_files(["package.json", "yarn.lock"])
 
 node_build(
     name = "script",
     srcs = ["package.json"],
     outs = ["dist"],
-    modules = "@yarn-baz//:node_modules",
     deps = [
-        "//examples/baz:baz_library",
-    ]
+        "@yarn-baz//:node_modules",
+        "//examples/baz:node_module",
+    ],
 )
 ```
 
 ## node_install
-
-This rule installs a set of node modules in the named folder (same name as the rule).
-It can optionally receive a `node_modules` folder from `yarn_repository` as well as
-normal `node_library` dependencies.
+This rule installs a set of node modules in the named folder (same name as the
+rule).
 
 The resultant folder is available as runfiles to other rules. This is most
 useful for embedding node modules into another app or for testing.
@@ -212,12 +272,14 @@ useful for embedding node modules into another app or for testing.
 ```python
 load("@com_happyco_rules_node//node:rules.bzl", "node_build")
 
-exports_files(["package.json", "yarn.lock", "bower.json"])
+exports_files(["package.json", "yarn.lock"])
 
 node_install(
     name = "my-mods",
-    modules = "@yarn-baz//:node_modules",
-    deps = ["//examples/baz:baz_library"],
+    deps = [
+        "@yarn-baz//:node_modules",
+        "//examples/baz:node_module",
+    ],
 )
 
 java_binary(
@@ -228,9 +290,8 @@ java_binary(
 ```
 
 ## ts_compile
-
-Compiles typescript sources to javascript (with declaration and source map files).
-The result of this can be provided as a source to `node_library` or use
+Compiles typescript sources to javascript (with declaration and source map
+files). The result of this can be provided as a source to `node_library` or use
 `ts_library` as a convenience.
 
 ```python
@@ -242,20 +303,19 @@ ts_compile(
     target = "ES5",
     strict = True,
     deps = [
-        "//examples/baz:baz_library",
+        "//examples/baz:node_module",
     ],
 )
 
 node_library(
-    name = "bar_library",
+    name = "node_module",
     package_name = "examples-bar",
     srcs = ["package.json", ":bar_library_ts"],
-    deps = ["//examples/baz:baz_library"],
+    deps = ["//examples/baz:node_module"],
 )
 ```
 
 ## ts_library
-
 Macro to compile typescript sources and build to a local npm module.
 The following example is equivalent to the two steps above.
 
@@ -263,12 +323,20 @@ The following example is equivalent to the two steps above.
 load("@com_happyco_rules_node//node:rules.bzl", "ts_compile")
 
 ts_library(
-    name = "bar_library",
+    name = "node_module",
     ts_srcs = ["bar.ts"],
     target = "ES5",
     strict = True,
     package_name = "examples-bar",
     node_srcs = ["package.json"],
-    deps = ["//examples/baz:baz_library"],
+    deps = ["//examples/baz:node_module"],
 )
 ```
+
+# Tools
+A tool is provided to extract dependencies from `package.json` to
+Bazel.
+
+Run: `bazel run @com_happyco_rules_node//node/tools:deps <full path to package folder>`
+
+Note, due to bazel runtime environment, the full path is required.

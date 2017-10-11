@@ -1,3 +1,5 @@
 import * as baz from "examples-baz"
 
-console.log("Bar! " + baz())
+export = function() {
+  return "Bar! " + baz()
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-var baz = require("examples-baz");
+var bar = require("examples-bar");
 
 console.log('****************************************************************');
-console.log('Hello, Foo and ' + baz());
+console.log('Hello, Foo and ' + bar());
 console.log('****************************************************************');

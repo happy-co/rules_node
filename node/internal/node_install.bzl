@@ -1,52 +1,18 @@
-load("//node:internal/node_utils.bzl", "package_rel_path", "make_install_cmd")
+load("//node:internal/node_utils.bzl", do_node_install = "node_install", "NodeModule")
 
 def _node_install_impl(ctx):
-    node = ctx.file._node
-    npm = ctx.file._npm
-
-    modules_dir = ctx.new_file(ctx.label.name)
-    modules_path = modules_dir.path
-
-    cmds = []
-    cmds += ["mkdir -p %s" % modules_path]
-
-    if ctx.file.modules:
-        cmds += [
-            "cp -aLf %s/* %s" % (ctx.file.modules.path, modules_path),
-            "mkdir -p %s/.bin" % modules_path,
-            "cp -a %s/.bin/* %s/.bin" % (ctx.file.modules.path, modules_path),
-        ]
-
-    if len(ctx.attr.deps) > 0:
-        cmds += make_install_cmd(ctx, modules_path)
-
-    #print("cmds: \n%s" % "\n".join(cmds))
-
-    deps = depset()
-    for d in ctx.attr.deps:
-        deps += d.node_library.transitive_deps
-
-    ctx.action(
-        mnemonic = "NodeInstall",
-        inputs = [node, npm] + deps.to_list(),
-        outputs = [modules_dir],
-        command = " && ".join(cmds),
-    )
-
-    return struct(
-        files = depset([modules_dir]),
-        runfiles = ctx.runfiles(files = [modules_dir], collect_data = True),
-    )
+    modules_path = ctx.actions.declare_directory(ctx.label.name)
+    do_node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    return [DefaultInfo(
+        files = depset([modules_path]),
+        runfiles = ctx.runfiles(files = [modules_path], collect_data = True),
+    )]
 
 node_install = rule(
     _node_install_impl,
     attrs = {
-        "modules": attr.label(
-            single_file = True,
-            allow_files = FileType(["node_modules"]),
-        ),
         "deps": attr.label_list(
-            providers = ["node_library"],
+            providers = [NodeModule],
         ),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
@@ -55,8 +21,8 @@ node_install = rule(
             executable = True,
             cfg = "host",
         ),
-        "_npm": attr.label(
-            default = Label("@com_happyco_rules_node_toolchain//:bin/npm"),
+        "_link_bins": attr.label(
+            default = Label("//node/tools:link_bins.js"),
             single_file = True,
             allow_files = True,
             executable = True,

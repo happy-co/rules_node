@@ -1,24 +1,14 @@
-load("//node:internal/node_utils.bzl", "execute")
-load("//node:internal/npm_repository.bzl", "BUILD_FILE", "npm_library")
+load("//node:internal/node_utils.bzl", "execute", "init_module")
 
 def _yarn_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
     nodedir = node.dirname.dirname
     yarn = ctx.path(ctx.attr._yarn)
 
-    cmd = [
-        "cp",
-        ctx.path(ctx.attr.package),
-        ctx.path("."),
-    ]
-    execute(ctx, cmd)
+    execute(ctx, ["cp", ctx.path(ctx.attr.package), ctx.path(".")])
+    execute(ctx, ["cp", ctx.path(ctx.attr.lockfile), ctx.path(".")])
 
-    cmd = [
-        "cp",
-        ctx.path(ctx.attr.lockfile),
-        ctx.path("."),
-    ]
-    execute(ctx, cmd)
+    cache_path = ctx.path("._yarncache")
 
     cmd = [
         node,
@@ -27,7 +17,7 @@ def _yarn_repository_impl(ctx):
         "--frozen-lockfile",
         "--non-interactive",
         "--cache-folder",
-        ctx.path("._yarncache"),
+        cache_path,
     ]
 
     if ctx.attr.registry:
@@ -35,38 +25,24 @@ def _yarn_repository_impl(ctx):
 
     execute(ctx, cmd, path = "%s/bin" % nodedir)
 
-    if not ctx.attr.modules_only:
-        modules = [f.basename for f in ctx.path("node_modules").readdir() if not f.basename.startswith(".")]
+    modules_path = ctx.path("node_modules")
+    execute(ctx, ["find", modules_path, "-iname", "build", "-type", "f", "-exec", "mv", "{}", "{}.js", ";"])
+    modules = []
+    for module in modules_path.readdir():
+        if module.basename.startswith("."): continue
+        modules.append("//%s:node_module" % (module.basename))
+        init_module(ctx, module)
 
-        for module in modules:
-            deps_cmd = [
-                node,
-                "-p",
-                "deps=require('%s/node_modules/%s/package.json').dependencies;if(deps){JSON.stringify(Object.keys(deps).map(d=>'//'+d))}else{'[]'}" % (ctx.path("."), module)
-            ]
-            deps = execute(ctx, deps_cmd).stdout
-            ctx.file("%s/BUILD" % module, BUILD_FILE.format(
-                name = module,
-                file = "%s.tgz" % module,
-                deps = deps,
-            ), executable = False)
-            cmd = [
-                "cd %s/node_modules/%s" % (ctx.path("."), module),
-                "&&",
-                node,
-                yarn,
-                "pack",
-                "--non-interactive",
-                "--cache-folder",
-                ctx.path("._yarncache"),
-                "--filename",
-                ctx.path("%s/%s.tgz" % (module, module)),
-                "&&",
-                "cd -",
-            ]
-            execute(ctx, ["/bin/sh", "-c", " ".join(cmd)])
+    execute(ctx, ["rm", "-rf", modules_path, cache_path])
+    ctx.file(
+        "BUILD",
+        """package(default_visibility = ["//visibility:public"])
+load("@com_happyco_rules_node//node:rules.bzl", "module_group")
 
-    ctx.file("BUILD", "exports_files([\"node_modules\"])\n", executable = False)
+module_group(name = "node_modules", srcs = %s)
+""" % (str(modules)),
+        executable = False,
+    )
 
 yarn_repository = repository_rule(
     implementation = _yarn_repository_impl,
@@ -82,7 +58,7 @@ yarn_repository = repository_rule(
             single_file = True,
             allow_files = ["yarn.lock"],
         ),
-        "modules_only": attr.bool(default = False),
+        "indeps": attr.string_list_dict(),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,
@@ -92,6 +68,13 @@ yarn_repository = repository_rule(
         ),
         "_yarn": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/yarn"),
+            single_file = True,
+            allow_files = True,
+            executable = True,
+            cfg = "host",
+        ),
+        "_deps": attr.label(
+            default = Label("//node/tools:deps.js"),
             single_file = True,
             allow_files = True,
             executable = True,

@@ -2,7 +2,7 @@
   "name": "examples-foo",
   "version": "0.0.0",
   "dependencies": {
-    "examples-baz": "0.0.0"
+    "examples-bar": "0.0.0"
   },
   "main": "foo.js",
   "bin": { "foo": "foo.js"},

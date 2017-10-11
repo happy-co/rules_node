@@ -1,5 +1,5 @@
 var assert = require('assert');
-var baz = require('examples-baz');
+var bar = require('examples-bar');
 var _ = require('underscore');
 
 describe('Array', function() {
@@ -10,18 +10,18 @@ describe('Array', function() {
   });
 });
 
-describe('baz', function() {
+describe('bar', function() {
   describe('#value', function() {
     it('should return a function', function() {
-      assert.equal("function", typeof(baz));
+      assert.equal("function", typeof(bar));
       //assert.ok(baz.indexOf("baz") != -1);
     });
     it('should resolve to string', function() {
-      assert.equal("string", typeof(baz()));
+      assert.equal("string", typeof(bar()));
       //assert.ok(baz.indexOf("baz") != -1);
     });
     it('should resolve to module name', function() {
-      assert.ok(baz().match(/.*[bB]az.*/));
+      assert.ok(bar().match(/.*[bB]ar.*/));
     });
   });
 });

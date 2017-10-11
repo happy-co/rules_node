@@ -55,13 +55,13 @@ _node_toolchain = repository_rule(
     },
 )
 
-def node_repositories(node_version="6.6.0",
-                      linux_sha256="c22ab0dfa9d0b8d9de02ef7c0d860298a5d1bf6cae7413fb18b99e8a3d25648a",
-                      darwin_sha256="c8d1fe38eb794ca46aacf6c8e90676eec7a8aeec83b4b09f57ce503509e7a19f",
-                      npm_version="5.1.0",
-                      ts_version = "2.4.1",
-                      yarn_version = "0.27.5",
-                      bower_version = "1.8.0"):
+def node_repositories(node_version="6.11.4",
+                      linux_sha256="31af453105ab3eaf0f266de083374a98c25e9bdc4c14a7d449e6a97e5814df0f",
+                      darwin_sha256="02d569fd805b8bfa7627c11d90e0876109d19c27e3b5285effe9385b6632728f",
+                      npm_version="5.5.1",
+                      ts_version = "2.5.3",
+                      yarn_version = "1.2.1",
+                      bower_version = "1.8.2"):
     native.new_http_archive(
         name = "nodejs_linux_amd64",
         url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version=node_version),
