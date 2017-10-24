@@ -3,12 +3,12 @@ load("//node:internal/node_utils.bzl", "node_install", "NodeModule", "ModuleGrou
 def _node_build_impl(ctx):
     modules_path = ctx.actions.declare_directory("node_modules")
     modules = get_modules(ctx.attr.deps)
-    node_install(ctx, modules_path, modules)
+    inst = node_install(ctx, modules_path, modules)
 
     node = ctx.file._node
     npm = ctx.file._npm
 
-    cmds = []
+    cmds = inst.cmds
 
     for src in ctx.files.srcs:
         short_path = package_rel_path(ctx, src)
@@ -37,14 +37,14 @@ def _node_build_impl(ctx):
 
     #print("cmds: \n%s" % "\n".join(cmds))
 
-    deps = depset([modules_path])
+    deps = depset()
     for d in modules:
         deps += [dd.file for dd in d.deps]
 
     ctx.actions.run_shell(
         mnemonic = "NodeBuild",
-        inputs = [node, npm] + ctx.files.srcs + deps.to_list(),
-        outputs = ctx.outputs.outs,
+        inputs = [node, npm] + ctx.files.srcs + deps.to_list() + inst.inputs,
+        outputs = ctx.outputs.outs + [modules_path],
         command = " && ".join(cmds),
     )
 

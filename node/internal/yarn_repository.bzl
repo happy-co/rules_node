@@ -43,6 +43,8 @@ module_group(name = "node_modules", srcs = %s)
 """ % (str(modules)),
         executable = False,
     )
+    if ctx.attr.postinstall:
+        execute(ctx, ctx.attr.postinstall)
 
 yarn_repository = repository_rule(
     implementation = _yarn_repository_impl,
@@ -59,6 +61,7 @@ yarn_repository = repository_rule(
             allow_files = ["yarn.lock"],
         ),
         "indeps": attr.string_list_dict(),
+        "postinstall": attr.string_list(),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,

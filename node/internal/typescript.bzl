@@ -8,9 +8,9 @@ def _ts_compile_impl(ctx):
     tsc = ctx.file._tsc
 
     modules_path = ctx.actions.declare_directory("node_modules")
-    node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    inst = node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
 
-    cmds = []
+    cmds = inst.cmds
 
     srcs = ctx.files.srcs
     staged_srcs = []
@@ -46,14 +46,14 @@ def _ts_compile_impl(ctx):
 
     #print("cmds: \n%s" % "\n".join(cmds))
 
-    deps = depset([modules_path])
+    deps = depset()
     for d in ctx.attr.deps:
         deps += [dd.file for dd in d[NodeModule].deps]
 
     ctx.actions.run_shell(
         mnemonic = "Typescript",
-        inputs = [node, npm, tsc] + srcs + deps.to_list(),
-        outputs = outs.to_list(),
+        inputs = [node, npm, tsc] + srcs + deps.to_list() + inst.inputs,
+        outputs = outs.to_list() + [modules_path],
         command = " && ".join(cmds),
         env = {
             "NODE_PATH": tsc.dirname + "/..",

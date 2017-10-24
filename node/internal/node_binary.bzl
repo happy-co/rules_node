@@ -19,7 +19,14 @@ load("//node:internal/node_utils.bzl", "node_install", "NodeModule")
 
 def node_binary_impl(ctx):
     modules_path = ctx.actions.declare_directory("node_modules", sibling = ctx.outputs.executable)
-    node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    inst = node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    ctx.actions.run_shell(
+        outputs = [modules_path],
+        inputs = inst.inputs,
+        mnemonic = "NodeInstall",
+        command = " && ".join(inst.cmds),
+        progress_message = "Installing node modules",
+    )
     node = ctx.file._node
     ctx.file_action(
         output = ctx.outputs.executable,

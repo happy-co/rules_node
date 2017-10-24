@@ -2,7 +2,14 @@ load("//node:internal/node_utils.bzl", do_node_install = "node_install", "NodeMo
 
 def _node_install_impl(ctx):
     modules_path = ctx.actions.declare_directory(ctx.label.name)
-    do_node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    inst = do_node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    ctx.actions.run_shell(
+        outputs = [modules_path],
+        inputs = inst.inputs,
+        mnemonic = "NodeInstall",
+        command = " && ".join(inst.cmds),
+        progress_message = "Installing node modules",
+    )
     return [DefaultInfo(
         files = depset([modules_path]),
         runfiles = ctx.runfiles(files = [modules_path], collect_data = True),

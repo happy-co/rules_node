@@ -147,13 +147,9 @@ def node_install(ctx, install_path, modules):
     link_bins = ctx.executable._link_bins
     inputs += [node, link_bins]
     cmds += ["%s %s %s" % (node.path, link_bins.path, install_path.path)]
-    #print(cmds)
-    ctx.actions.run_shell(
-        outputs = [install_path],
-        inputs = inputs,
-        mnemonic = "NodeInstall",
-        command = " && ".join(cmds),
-        progress_message = "Installing node modules",
+    return struct(
+        inputs = inputs.to_list(),
+        cmds = cmds,
     )
 
 def get_modules(deps):
