@@ -1,7 +1,10 @@
 load("//node:internal/node_utils.bzl", "node_install", "NodeModule", "ModuleGroup", "package_rel_path", "get_modules")
 
 def _node_build_impl(ctx):
-    modules_path = ctx.actions.declare_directory("node_modules")
+    modules_path = struct(
+        path = "%s/%s/node_modules" % (ctx.bin_dir.path, ctx.label.package),
+        dirname = "%s/%s" % (ctx.bin_dir.path, ctx.label.package),
+    )
     modules = get_modules(ctx.attr.deps)
     inst = node_install(ctx, modules_path, modules)
 
@@ -12,8 +15,6 @@ def _node_build_impl(ctx):
 
     for src in ctx.files.srcs:
         short_path = package_rel_path(ctx, src)
-        if short_path.startswith("external/"): # don't map folders for external repos
-            short_path = ""
         dst = "%s/%s" % (modules_path.dirname, short_path)
         if dst[:dst.rindex("/")] != modules_path.dirname:
             cmds.append("mkdir -p %s" % (dst[:dst.rindex("/")]))
@@ -44,7 +45,7 @@ def _node_build_impl(ctx):
     ctx.actions.run_shell(
         mnemonic = "NodeBuild",
         inputs = [node, npm] + ctx.files.srcs + deps.to_list() + inst.inputs,
-        outputs = ctx.outputs.outs + [modules_path],
+        outputs = ctx.outputs.outs,
         command = " && ".join(cmds),
     )
 
@@ -63,6 +64,7 @@ node_build = rule(
             mandatory = True,
             allow_files = True,
         ),
+        "srcmap": attr.string_dict(),
         "deps": attr.label_list(
             providers = [[NodeModule], [ModuleGroup]],
         ),

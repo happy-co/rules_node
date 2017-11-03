@@ -171,6 +171,11 @@ def package_rel_path(ctx, file):
         rel_path = rel_path[len(ctx.label.workspace_root)+1:]
     if len(ctx.label.package) > 0 and rel_path.startswith(ctx.label.package):
         rel_path = rel_path[len(ctx.label.package)+1:]
+    if hasattr(ctx.attr, "srcmap"):
+        for prefix in ctx.attr.srcmap:
+            if rel_path.startswith(prefix):
+                rel_path = rel_path.replace(prefix, ctx.attr.srcmap[prefix], 1)
+                break
     # print("file: %s" % file.path)
     # print("rel_path: %s" % rel_path)
     return rel_path

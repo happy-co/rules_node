@@ -24,7 +24,13 @@ def _bower_repository_impl(ctx):
 
     execute(ctx, cmd)
 
-    ctx.file("BUILD", "exports_files([\"bower_components\"])\n", executable = False)
+    ctx.file("BUILD", """
+filegroup(
+    name = "bower_components",
+    srcs = glob(["bower_components/**"]),
+    visibility = ["//visibility:public"],
+)
+""", executable = False)
 
 bower_repository = repository_rule(
     implementation = _bower_repository_impl,
