@@ -1,4 +1,4 @@
-load("//node:internal/node_utils.bzl", "execute", "init_module")
+load("//node:internal/node_utils.bzl", "execute", "init_module", "mangle_package_name")
 
 def _yarn_repository_impl(ctx):
     node = ctx.path(ctx.attr._node)
@@ -28,8 +28,17 @@ def _yarn_repository_impl(ctx):
     modules_path = ctx.path("node_modules")
     execute(ctx, ["find", modules_path, "-iname", "build", "-type", "f", "-exec", "mv", "{}", "{}.js", ";"])
     modules = []
+    # Rename and move scoped modules with invalid bazel labels
+    for module in modules_path.readdir():
+      if module.basename.startswith("@"):
+        for scoped_module in module.readdir():
+          execute(ctx, ["mv", scoped_module, "%s/%s" % (modules_path, mangle_package_name(module.basename, scoped_module.basename))])
+
     for module in modules_path.readdir():
         if module.basename.startswith("."): continue
+        # scoped modules just contain other modules so don't include them
+        if module.basename.startswith("@"): continue
+
         modules.append("//%s:node_module" % (module.basename))
         init_module(ctx, module)
 

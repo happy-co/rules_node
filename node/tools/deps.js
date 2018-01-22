@@ -22,12 +22,14 @@ try{
 if (pkg.dependencies) {
   var wrapped = []
   try {
-    wrapped = fs.readdirSync(path.join(modulePath, "node_modules"))
+    // A node module must be wrapped if it isn't in the root node_modules directory
+    wrapped = fs.readdirSync(path.join("node_modules"))
   } catch (e) {
     // may not have any
   }
   // list deps that aren't wrapped
-  var deps = Object.keys(pkg.dependencies).filter(d=>wrapped.indexOf(d)==-1).map(d=>'//'+d+(indeps.indexOf(d)==-1?":node_module":":node_indep"))
+  var fixedDeps = Object.keys(pkg.dependencies).map(d => d[0] == "@" ? d.replace("@", "__AT__").replace("/", "__SLASH__") : d)
+  var deps = fixedDeps.filter(d=>wrapped.indexOf(d)!=-1).map(d=>'//'+d+(indeps.indexOf(d)==-1?":node_module":":node_indep"))
   process.stdout.write(JSON.stringify(deps) + "\n")
 } else {
   process.stdout.write("[]\n")

@@ -53,9 +53,10 @@ module_group = rule(
     },
 )
 
-def node_library(name, srcs, package_name = "", deps = [], indeps = [], wrapped_deps = [], visibility = None):
+def node_library(name, srcs, package_name = "", strip_prefix = "", deps = [], indeps = [], wrapped_deps = [], visibility = None):
     if package_name == "":
         package_name = name
+
     srcs_by_pkg = {}
     for s in srcs:
         pkg_name = Label("//%s" % native.package_name()).relative(s).package
@@ -63,9 +64,14 @@ def node_library(name, srcs, package_name = "", deps = [], indeps = [], wrapped_
         ss.append(s)
         srcs_by_pkg[pkg_name] = ss
     for p in srcs_by_pkg:
+        if strip_prefix == "":
+            strip_prefix = "." if p == native.package_name() else "/%s" % p
+        else:
+            strip_prefix = "./%s" % strip_prefix if p == native.package_name() else "/%s/%s" % (p, strip_prefix)
+
         pkg_tar(
             name = "%s-%s" % (name, p.replace("/", "_")),
-            strip_prefix = "." if p == native.package_name() else "/%s" % p,
+            strip_prefix = strip_prefix if p == native.package_name() else "/%s" % p,
             package_dir = "/",
             srcs = srcs_by_pkg[p],
         )
