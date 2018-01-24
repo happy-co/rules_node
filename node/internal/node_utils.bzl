@@ -40,7 +40,11 @@ def init_module(repository_ctx, module):
             repository_ctx.path(repository_ctx.attr._node),
             repository_ctx.path(repository_ctx.attr._deps),
             t.module,
-        ] + repository_ctx.attr.indeps.keys()
+        ]
+        # if not a top-level module, we need to exclude peers from the deps
+        if str(t.module).count("node_modules") != 1:
+          deps_cmd += ["--checkPeers"]
+        deps_cmd += repository_ctx.attr.indeps.keys()
         deps = execute(repository_ctx, deps_cmd).stdout.strip()
 
         indeps = ["//%s:node_module" % (i) for i in repository_ctx.attr.indeps.get(t.module.basename, [])]
@@ -168,7 +172,7 @@ def node_install(ctx, install_path, modules):
                             "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name, w4Name),
                             "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w4.file.path, install_path.path, mName, wName, w2Name, w3Name, w4Name),
                         ]
-                    if w4.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
+                        if w4.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
     node = ctx.executable._node
     link_bins = ctx.executable._link_bins
     inputs += [node, link_bins]
