@@ -29,10 +29,8 @@ def init_module(repository_ctx, module):
             for scoped_module in w.readdir():
                 mangled_package_name = mangle_package_name(w.basename, scoped_module.basename)
                 mangled_module_path = "%s/%s" % (w.dirname, mangled_package_name)
-                # mangled_module_path = "%s/%s__SLASH__%s" % (w.dirname, w.basename.replace("@", "__AT__"), scoped_module.basename)
                 execute(repository_ctx, ["mv", scoped_module, mangled_module_path])
                 renamed_module = repository_ctx.path(w.dirname).get_child(mangled_package_name)
-                # renamed_module = repository_ctx.path(w.dirname).get_child("%s__SLASH__%s" % (w.basename.replace("@", "__AT__"), scoped_module.basename))
                 targets.append(struct(module = renamed_module, path = str(repository_ctx.path(mangled_module_path))[repo_prefix_len+14:]))
         else:
             targets.append(struct(module = w, path = str(w)[repo_prefix_len+14:]))
@@ -52,7 +50,8 @@ def init_module(repository_ctx, module):
         if wrapped_path.exists:
             for sub_module in wrapped_path.readdir():
                 if sub_module.basename.startswith("."): continue
-                # scoped modules aren't actual modules so don't include them
+                # The scoped modules have been renamed and moved. Their empty parent containers remain
+                # and need to be ignored
                 if sub_module.basename.startswith("@"): continue
 
                 pkg_path = "%s/node_modules/%s" % (t.path, sub_module.basename)
@@ -169,7 +168,7 @@ def node_install(ctx, install_path, modules):
                             "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name, w4Name),
                             "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w4.file.path, install_path.path, mName, wName, w2Name, w3Name, w4Name),
                         ]
-                    if w3.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
+                    if w4.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
     node = ctx.executable._node
     link_bins = ctx.executable._link_bins
     inputs += [node, link_bins]

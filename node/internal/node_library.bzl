@@ -71,7 +71,7 @@ def node_library(name, srcs, package_name = "", strip_prefix = "", deps = [], in
 
         pkg_tar(
             name = "%s-%s" % (name, p.replace("/", "_")),
-            strip_prefix = strip_prefix if p == native.package_name() else "/%s" % p,
+            strip_prefix = strip_prefix,
             package_dir = "/",
             srcs = srcs_by_pkg[p],
         )
