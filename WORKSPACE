@@ -21,3 +21,9 @@ yarn_repository(
     package = "//examples/yarn-baz:package.json",
     lockfile = "//examples/yarn-baz:yarn.lock",
 )
+
+yarn_repository(
+  name = "yarn_scoped",
+  package = "//examples/scoped:package.json",
+  lockfile = "//examples/scoped:yarn.lock"
+)

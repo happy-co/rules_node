@@ -96,19 +96,40 @@ Bazel which prohibits them. Do this by adding an `indeps` attribute.
 
 For example, given a cycle:
 ```
-.-> @npm//babel-core:node_module
-|   @npm//babel-register:node_module
-`-- @npm//babel-core:node_module
+.-> @npm//d:node_module
+|   @npm//es5-ext:node_module
+|   @npm//es6-iterator:node_module
+`-- @npm//d:node_module
 ```
 
-You need to apply a break between `babel-register` and `babel-core`:
+You need to apply a break between `es6-iterator` and `d`:
 
 ```python
 npm_repository(
   name = "npm",
-  deps = { "babel-core": "5.8.38" },
+  deps = { "d": "0.1.0" },
   indeps = {
-    "babel-register": ["babel-core"],
+    "es6-iterator": ["d"],
+  },
+)
+```
+
+Be careful not to create a dependency cycle by duplicating the break in your config.
+For example, when you see a cycle like this:
+```
+.-> @npm//es5-ext:node_indep
+|   @npm//es6-iterator:node_indep
+`-- @npm//es5-ext:node_indep
+```
+
+You'll probably find something like this in your config:
+```python
+npm_repository(
+  name = "npm",
+  deps = { "es6-iterator": "0.1.0" },
+  indeps = {
+    "es6-iterator": ["es5-ext"],
+    "es5-ext": ["es6-iterator"]
   },
 )
 ```

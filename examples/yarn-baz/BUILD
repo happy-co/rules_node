@@ -6,7 +6,7 @@ node_library(
     name = "node_module",
     package_name = "examples-baz",
     srcs = glob(["package.json", "*.js"]),
-    deps = ["@yarn//chalk:node_module"],
+    deps = ["@yarn//chalk:node_module", "@yarn_scoped//:node_modules"],
 )
 
 node_binary(

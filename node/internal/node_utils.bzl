@@ -17,20 +17,36 @@ node_library(
 
 def init_module(repository_ctx, module):
     targets = [struct(module = module, path = module.basename)]
+    # Extract nested targets within wrapped node_modules directories
     wrapped_paths = execute(repository_ctx, [
         "/bin/sh", "-c",
         "(find %s/node_modules -type d | grep '^%s\(/node_modules/[^/]\{1,\}\)\{1,\}$') 2>/dev/null || true" % (module, module),
     ]).stdout.split("\n")
     repo_prefix_len = len(str(repository_ctx.path(".")))
+
     for w in [repository_ctx.path(w[repo_prefix_len+1:]) for w in wrapped_paths if w and not w.endswith(".bin")]:
-        targets.append(struct(module = w, path = str(w)[repo_prefix_len+14:]))
+        if w.basename.startswith("@"):
+            for scoped_module in w.readdir():
+                mangled_package_name = mangle_package_name(w.basename, scoped_module.basename)
+                mangled_module_path = "%s/%s" % (w.dirname, mangled_package_name)
+                execute(repository_ctx, ["mv", scoped_module, mangled_module_path])
+                renamed_module = repository_ctx.path(w.dirname).get_child(mangled_package_name)
+                targets.append(struct(module = renamed_module, path = str(repository_ctx.path(mangled_module_path))[repo_prefix_len+14:]))
+        else:
+            targets.append(struct(module = w, path = str(w)[repo_prefix_len+14:]))
+
     for t in targets:
         deps_cmd = [
             repository_ctx.path(repository_ctx.attr._node),
             repository_ctx.path(repository_ctx.attr._deps),
             t.module,
-        ] + repository_ctx.attr.indeps.keys()
+        ]
+        # if not a top-level module, we need to exclude peers from the deps
+        if str(t.module).count("node_modules") != 1:
+          deps_cmd += ["--checkPeers"]
+        deps_cmd += repository_ctx.attr.indeps.keys()
         deps = execute(repository_ctx, deps_cmd).stdout.strip()
+
         indeps = ["//%s:node_module" % (i) for i in repository_ctx.attr.indeps.get(t.module.basename, [])]
 
         wrapped_deps = []
@@ -38,6 +54,10 @@ def init_module(repository_ctx, module):
         if wrapped_path.exists:
             for sub_module in wrapped_path.readdir():
                 if sub_module.basename.startswith("."): continue
+                # The scoped modules have been renamed and moved. Their empty parent containers remain
+                # and need to be ignored
+                if sub_module.basename.startswith("@"): continue
+
                 pkg_path = "%s/node_modules/%s" % (t.path, sub_module.basename)
                 if sub_module.basename in repository_ctx.attr.indeps:
                     wrapped_deps.append("//%s:node_indep" % (pkg_path))
@@ -118,31 +138,41 @@ def node_install(ctx, install_path, modules):
     inputs = depset()
     cmds = ["mkdir -p %s" % (install_path.path)]
     for m in merge_deps(modules):
-        #print("installing:", m.label)
         inputs += [m.file]
+        mName = demangle_package_name(m.name)
         cmds += [
-            "mkdir -p %s/%s" % (install_path.path, m.name),
-            "tar -xzf %s -C %s/%s --strip-components 1" % (m.file.path, install_path.path, m.name),
+            "mkdir -p %s/%s" % (install_path.path, mName),
+            "tar -xzf %s -C %s/%s --strip-components 1" % (m.file.path, install_path.path, mName),
         ]
         for w in m.wrapped_deps:
             inputs += [w.file]
+            wName = demangle_package_name(w.name)
             cmds += [
-                "mkdir -p %s/%s/node_modules/%s" % (install_path.path, m.name, w.name),
-                "tar -xzf %s -C %s/%s/node_modules/%s --strip-components 1" % (w.file.path, install_path.path, m.name, w.name),
+                "mkdir -p %s/%s/node_modules/%s" % (install_path.path, mName, wName),
+                "tar -xzf %s -C %s/%s/node_modules/%s --strip-components 1" % (w.file.path, install_path.path, mName, wName),
             ]
             for w2 in w.wrapped_deps:
                 inputs += [w2.file]
+                w2Name = demangle_package_name(w2.name)
                 cmds += [
-                    "mkdir -p %s/%s/node_modules/%s/node_modules/%s" % (install_path.path, m.name, w.name, w2.name),
-                    "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w2.file.path, install_path.path, m.name, w.name, w2.name),
+                    "mkdir -p %s/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name),
+                    "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w2.file.path, install_path.path, mName, wName, w2Name),
                 ]
                 for w3 in w2.wrapped_deps:
                     inputs += [w3.file]
+                    w3Name = demangle_package_name(w3.name)
                     cmds += [
-                        "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, m.name, w.name, w2.name, w3.name),
-                        "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w3.file.path, install_path.path, m.name, w.name, w2.name, w3.name),
+                        "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name),
+                        "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w3.file.path, install_path.path, mName, wName, w2Name, w3Name),
                     ]
-                    if w2.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 3 levels (in %s)" % w3.label)
+                    for w4 in w3.wrapped_deps:
+                        inputs += [w4.file]
+                        w4Name = demangle_package_name(w4.name)
+                        cmds += [
+                            "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name, w4Name),
+                            "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w4.file.path, install_path.path, mName, wName, w2Name, w3Name, w4Name),
+                        ]
+                        if w4.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
     node = ctx.executable._node
     link_bins = ctx.executable._link_bins
     inputs += [node, link_bins]
@@ -176,6 +206,10 @@ def package_rel_path(ctx, file):
             if rel_path.startswith(prefix):
                 rel_path = rel_path.replace(prefix, ctx.attr.srcmap[prefix], 1)
                 break
-    # print("file: %s" % file.path)
-    # print("rel_path: %s" % rel_path)
     return rel_path
+
+def mangle_package_name(scope_name, package_name):
+  return "%s__SLASH__%s" % (scope_name.replace("@", "__AT__"), package_name)
+
+def demangle_package_name(name):
+  return name.replace("__AT__", "@").replace("__SLASH__", "/")
