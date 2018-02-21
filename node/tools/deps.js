@@ -9,9 +9,9 @@ if (args.length < 1) {
 }
 var modulePath = args[0]
 var checkPeers = args[1] === "--checkPeers"
-var indeps = args.slice(checkPeers?2:1)
+var indeps = args.slice(checkPeers ? 2 : 1)
 var pkg = {}
-try{
+try {
   data = fs.readFileSync(path.join(modulePath, "package.json"), 'utf8')
   process.stderr.write(typeof data)
   if (data) {
@@ -30,10 +30,11 @@ if (pkg.dependencies) {
   }
   if (checkPeers) {
     wrapped += fs.readdirSync(path.join(modulePath, ".."))
+    wrapped += path.basename(path.join(modulePath, "..", ".."))
   }
   // list deps that aren't wrapped
   var fixedDeps = Object.keys(pkg.dependencies).map(d => d[0] == "@" ? d.replace("@", "__AT__").replace("/", "__SLASH__") : d)
-  var deps = fixedDeps.filter(d=>wrapped.indexOf(d)==-1).map(d=>'//'+d+(indeps.indexOf(d)==-1?":node_module":":node_indep"))
+  var deps = fixedDeps.filter(d => wrapped.indexOf(d) == -1).map(d => '//' + d + (indeps.indexOf(d) == -1 ? ":node_module" : ":node_indep"))
   process.stdout.write(JSON.stringify(deps) + "\n")
 } else {
   process.stdout.write("[]\n")
