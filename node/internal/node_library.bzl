@@ -1,4 +1,5 @@
 load("//node:internal/node_utils.bzl", "merge_deps", "NodeModule", "ModuleGroup", "get_modules")
+load("//node:internal/module_group.bzl", "module_group")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 def _node_module_impl(ctx):
@@ -19,36 +20,23 @@ def _node_module_impl(ctx):
 node_module = rule(
     _node_module_impl,
     attrs = {
-        "package_name": attr.string(), # bazel doesn't appear to allow a rule to read data from a file so need to specify this here
+        "package_name": attr.string(),  # bazel doesn't appear to allow a rule to read data from a file so need to specify this here
         "srcs": attr.label(
             allow_files = [".tar.gz"],
             mandatory = True,
             single_file = True,
         ),
         "deps": attr.label_list(
-            providers = [[NodeModule], [ModuleGroup]],
+            providers = [
+                [NodeModule],
+                [ModuleGroup],
+            ],
         ),
         "wrapped_deps": attr.label_list(
-            providers = [[NodeModule], [ModuleGroup]],
-        ),
-    },
-)
-
-def _module_group_impl(ctx):
-    modules = depset()
-    for s in ctx.attr.srcs:
-        if ModuleGroup in s:
-            modules += s[ModuleGroup].modules
-        else:
-            modules += [s[NodeModule]]
-    return [ModuleGroup(modules = modules)]
-
-module_group = rule(
-    _module_group_impl,
-    attrs = {
-        "srcs": attr.label_list(
-            mandatory = True,
-            providers = [[NodeModule], [ModuleGroup]],
+            providers = [
+                [NodeModule],
+                [ModuleGroup],
+            ],
         ),
     },
 )

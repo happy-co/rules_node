@@ -1,4 +1,18 @@
 #
+# Providers
+#
+
+NodeModule = provider(fields = [
+    "name",
+    "label",
+    "file",
+    "deps",
+    "wrapped_deps",
+])
+
+ModuleGroup = provider(fields = ["modules"])
+
+#
 # Repository utils
 #
 
@@ -67,7 +81,7 @@ def init_module(repository_ctx, module):
         repository_ctx.file(
             "%s/BUILD.bazel" % t.module,
             BUILD_FILE.format(
-                package_name = t.module.basename,
+                package_name = demangle_package_name(t.module.basename),
                 deps = deps,
                 indeps = str(indeps),
                 wrapped_deps = str(wrapped_deps),
@@ -94,8 +108,14 @@ def execute(repository_ctx, cmds, path = "", debug = False):
 # Rule utils
 #
 
-NodeModule = provider(fields = ["name", "label", "file", "deps", "wrapped_deps"])
-ModuleGroup = provider(fields = ["modules"])
+def get_modules(deps):
+    modules = depset()
+    for d in deps:
+        if NodeModule in d:
+            modules += [d[NodeModule]]
+        else:
+            modules += d[ModuleGroup].modules
+    return modules.to_list()
 
 def merge_deps(deps):
     inner_deps = []
@@ -139,39 +159,19 @@ def node_install(ctx, install_path, modules):
     cmds = ["mkdir -p %s" % (install_path.path)]
     for m in merge_deps(modules):
         inputs += [m.file]
-        mName = demangle_package_name(m.name)
-        cmds += [
-            "mkdir -p %s/%s" % (install_path.path, mName),
-            "tar -xzf %s -C %s/%s --strip-components 1" % (m.file.path, install_path.path, mName),
-        ]
+        cmds += install_module_cmds(m, install_path.path)
         for w in m.wrapped_deps:
             inputs += [w.file]
-            wName = demangle_package_name(w.name)
-            cmds += [
-                "mkdir -p %s/%s/node_modules/%s" % (install_path.path, mName, wName),
-                "tar -xzf %s -C %s/%s/node_modules/%s --strip-components 1" % (w.file.path, install_path.path, mName, wName),
-            ]
+            cmds += install_module_cmds(w, "%s/%s/node_modules" % (install_path.path, m.name))
             for w2 in w.wrapped_deps:
                 inputs += [w2.file]
-                w2Name = demangle_package_name(w2.name)
-                cmds += [
-                    "mkdir -p %s/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name),
-                    "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w2.file.path, install_path.path, mName, wName, w2Name),
-                ]
+                cmds += install_module_cmds(w2, "%s/%s/node_modules/%s/node_modules" % (install_path.path, m.name, w.name))
                 for w3 in w2.wrapped_deps:
                     inputs += [w3.file]
-                    w3Name = demangle_package_name(w3.name)
-                    cmds += [
-                        "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name),
-                        "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w3.file.path, install_path.path, mName, wName, w2Name, w3Name),
-                    ]
+                    cmds += install_module_cmds(w3, "%s/%s/node_modules/%s/node_modules/%s/node_modules" % (install_path.path, m.name, w.name, w2.name))
                     for w4 in w3.wrapped_deps:
                         inputs += [w4.file]
-                        w4Name = demangle_package_name(w4.name)
-                        cmds += [
-                            "mkdir -p %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s" % (install_path.path, mName, wName, w2Name, w3Name, w4Name),
-                            "tar -xzf %s -C %s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules/%s --strip-components 1" % (w4.file.path, install_path.path, mName, wName, w2Name, w3Name, w4Name),
-                        ]
+                        cmds += install_module_cmds(w4, "%s/%s/node_modules/%s/node_modules/%s/node_modules/%s/node_modules" % (install_path.path, m.name, w.name, w2.name, w3.name))
                         if w4.wrapped_deps: fail("nested wrapped dependencies not supported deeper than 4 levels (in %s)" % w4.label)
     node = ctx.executable._node
     link_bins = ctx.executable._link_bins
@@ -182,14 +182,18 @@ def node_install(ctx, install_path, modules):
         cmds = cmds,
     )
 
-def get_modules(deps):
-    modules = depset()
-    for d in deps:
-        if NodeModule in d:
-            modules += [d[NodeModule]]
-        else:
-            modules += d[ModuleGroup].modules
-    return modules.to_list()
+def install_module_cmds(m, install_path):
+    if m.file.basename.endswith(".tar.gz"):
+        return [
+            "mkdir -p %s/%s" % (install_path, m.name),
+            "tar -xzf %s -C %s/%s --strip-components 1" % (m.file.path, install_path, m.name),
+        ]
+    cmds = ["cp -aLf %s %s" % (m.file.path, install_path)]
+    if m.file.basename != m.name:
+        if m.name.find("/") != -1:
+            cmds += ["mkdir -p %s/%s" % (install_path, m.name.rsplit("/", 1)[0])]
+        cmds += ["mv %s/%s %s/%s" % (install_path, m.file.basename, install_path, m.name)]
+    return cmds
 
 def package_rel_path(ctx, file):
     rel_path = file.path
