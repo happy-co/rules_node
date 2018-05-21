@@ -18,7 +18,8 @@ def _node_build_impl(ctx):
         dst = "%s/%s" % (modules_path.dirname, short_path)
         if dst[:dst.rindex("/")] != modules_path.dirname:
             cmds.append("mkdir -p %s" % (dst[:dst.rindex("/")]))
-        cmds.append("cp -aLf %s %s" % (src.path, dst))
+        if src.path != dst:
+            cmds.append("cp -aLf %s %s" % (src.path, dst))
 
     cmds.append("export HOME=`pwd`")
     cmds.append("cd %s" % (modules_path.dirname))
@@ -66,7 +67,10 @@ node_build = rule(
         ),
         "srcmap": attr.string_dict(),
         "deps": attr.label_list(
-            providers = [[NodeModule], [ModuleGroup]],
+            providers = [
+                [NodeModule],
+                [ModuleGroup],
+            ],
         ),
         "script": attr.string(default = "build"),
         "outs": attr.output_list(),

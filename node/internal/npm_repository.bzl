@@ -41,13 +41,10 @@ def _npm_repository_impl(ctx):
       if module.basename.startswith("@"):
         for scoped_module in module.readdir():
           execute(ctx, ["mv", scoped_module, "%s/%s" % (modules_path, mangle_package_name(module.basename, scoped_module.basename))])
-
+        execute(ctx, ["rm", "-rf", module])
 
     for module in modules_path.readdir():
         if module.basename.startswith("."): continue
-        # scoped modules just contain other modules so don't include them
-        if module.basename.startswith("@"): continue
-
         modules.append("//%s:node_modules" % (module.basename))
         init_module(ctx, module)
 
@@ -63,7 +60,6 @@ module_group(name = "node_modules", srcs = %s)
     )
 
 npm_repository = repository_rule(
-    implementation = _npm_repository_impl,
     attrs = {
         "registry": attr.string(),
         "deps": attr.string_dict(mandatory = True),
@@ -90,4 +86,5 @@ npm_repository = repository_rule(
             cfg = "host",
         ),
     },
+    implementation = _npm_repository_impl,
 )
