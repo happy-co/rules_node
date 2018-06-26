@@ -1,8 +1,9 @@
-load("//node:internal/node_utils.bzl", do_node_install = "node_install", "NodeModule")
+load("//node:internal/node_utils.bzl", "ModuleGroup", "NodeModule", "get_modules", do_node_install = "node_install")
 
 def _node_install_impl(ctx):
     modules_path = ctx.actions.declare_directory(ctx.label.name)
-    inst = do_node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    modules = get_modules(ctx.attr.deps)
+    inst = do_node_install(ctx, modules_path, modules)
     ctx.actions.run_shell(
         outputs = [modules_path],
         inputs = inst.inputs,
@@ -19,7 +20,10 @@ node_install = rule(
     _node_install_impl,
     attrs = {
         "deps": attr.label_list(
-            providers = [NodeModule],
+            providers = [
+                [NodeModule],
+                [ModuleGroup],
+            ],
         ),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),

@@ -15,16 +15,31 @@ export NODE_PATH=$ROOT/{node_path}
 exec "$ROOT/{script_path}" $@
 """
 
-load("//node:internal/node_utils.bzl", "node_install", "NodeModule")
+load("//node:internal/node_utils.bzl", "ModuleGroup", "NodeModule", "get_modules", "node_install", "package_rel_path")
 
 def node_binary_impl(ctx):
     modules_path = ctx.actions.declare_directory("node_modules", sibling = ctx.outputs.executable)
-    inst = node_install(ctx, modules_path, [d[NodeModule] for d in ctx.attr.deps])
+    modules = get_modules(ctx.attr.deps)
+    inst = node_install(ctx, modules_path, modules)
+
+    cmds = inst.cmds
+
+    deps = depset()
+
+    for src in ctx.files.srcs:
+        short_path = package_rel_path(ctx, src)
+        dst = "%s/%s" % (modules_path.dirname, short_path)
+        if dst[:dst.rindex("/")] != modules_path.dirname:
+            cmds.append("mkdir -p %s" % (dst[:dst.rindex("/")]))
+        if src.path != dst:
+            cmds.append("cp -aLf %s %s" % (src.path, dst))
+            deps += [ctx.actions.declare_file(short_path)]
+
     ctx.actions.run_shell(
-        outputs = [modules_path],
-        inputs = inst.inputs,
+        outputs = [modules_path] + deps.to_list(),
+        inputs = inst.inputs + ctx.files.srcs,
         mnemonic = "NodeInstall",
-        command = " && ".join(inst.cmds),
+        command = " && ".join(cmds),
         progress_message = "Installing node modules",
     )
     node = ctx.file._node
@@ -41,20 +56,26 @@ def node_binary_impl(ctx):
         DefaultInfo(
             runfiles = ctx.runfiles(
                 files = [node, modules_path],
+                transitive_files = deps,
                 collect_data = True,
-            )
-        )
+            ),
+        ),
     ]
 
 node_binary = rule(
     node_binary_impl,
     attrs = {
-        "script": attr.string(mandatory = True),
-        "deps": attr.label_list(
-            mandatory = True,
-            allow_empty = False,
-            providers = [NodeModule],
+        "srcs": attr.label_list(
+            allow_files = True,
         ),
+        "srcmap": attr.string_dict(),
+        "deps": attr.label_list(
+            providers = [
+                [NodeModule],
+                [ModuleGroup],
+            ],
+        ),
+        "script": attr.string(mandatory = True),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,
