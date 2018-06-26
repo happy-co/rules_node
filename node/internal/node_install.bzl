@@ -11,10 +11,13 @@ def _node_install_impl(ctx):
         command = " && ".join(inst.cmds),
         progress_message = "Installing node modules",
     )
-    return [DefaultInfo(
-        files = depset([modules_path]),
-        runfiles = ctx.runfiles(files = [modules_path], collect_data = True),
-    )]
+    return [
+        DefaultInfo(
+            files = depset([modules_path]),
+            runfiles = ctx.runfiles(files = [modules_path], collect_data = True),
+        ),
+        ModuleGroup(modules = modules),
+    ]
 
 node_install = rule(
     _node_install_impl,
