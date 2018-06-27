@@ -33,7 +33,7 @@ function linkBins(module, pkgLoc) {
           }
         }
       } else if (pkg && pkg.directories && pkg.directories.bin) {
-        fs.readdirSync(path.join(modulesPath, module, pkg.directories.bin)).forEach((script)=>{
+        fs.readdirSync(path.join(modulesPath, module, pkg.directories.bin)).forEach((script) => {
           var dest = path.join(binLoc, script)
           var src = path.join(pkgLoc, pkg.directories.bin, script)
           symlink(src, dest)
@@ -66,7 +66,7 @@ modules.forEach(module => {
     if (module.startsWith('.')) return
     var scopedModule = fs.readdirSync(path.join(modulesPath, module))
     scopedModule.forEach(scopedModule => {
-      linkBins(scopedModule, path.join("../..", scopedModule))
+      linkBins(path.join(module, scopedModule), path.join("..", module, scopedModule))
     })
   } else {
     linkBins(module, path.join("..", module))
