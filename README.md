@@ -60,7 +60,7 @@ Version defaults are as follows:
 
 | Tool | Version |
 | :--- | :------ |
-| node | 6.11.4 |
+| node | 8.11.4 |
 | npm | 5.5.1 |
 | yarn | 1.2.1 |
 | bower | 1.8.2 |
