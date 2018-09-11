@@ -55,9 +55,9 @@ _node_toolchain = repository_rule(
     },
 )
 
-def node_repositories(node_version="6.11.4",
-                      linux_sha256="31af453105ab3eaf0f266de083374a98c25e9bdc4c14a7d449e6a97e5814df0f",
-                      darwin_sha256="02d569fd805b8bfa7627c11d90e0876109d19c27e3b5285effe9385b6632728f",
+def node_repositories(node_version="8.11.4",
+                      linux_sha256="c69abe770f002a7415bd00f7ea13b086650c1dd925ef0c3bf8de90eabecc8790",
+                      darwin_sha256="aa1de83b388581d0d9ec3276f4526ee67e17e0f1bc0deb5133f960ce5dc9f1ef",
                       npm_version="5.5.1",
                       ts_version = "2.5.3",
                       yarn_version = "1.2.1",
