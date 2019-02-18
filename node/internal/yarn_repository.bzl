@@ -8,17 +8,18 @@ def _yarn_repository_impl(ctx):
     execute(ctx, ["cp", ctx.path(ctx.attr.package), ctx.path(".")])
     execute(ctx, ["cp", ctx.path(ctx.attr.lockfile), ctx.path(".")])
 
-    cache_path = ctx.path("._yarncache")
-
     cmd = [
         node,
         yarn,
         "install",
         "--frozen-lockfile",
         "--non-interactive",
-        "--cache-folder",
-        cache_path,
     ]
+
+    if not ctx.attr.use_global_yarn_cache:
+        cmd += ["--cache-folder", ctx.path("._yarncache")]
+    else:
+        cmd += ["--mutex", "network"]
 
     if ctx.attr.registry:
         cmd += ["--registry", ctx.attr.registry]
@@ -30,29 +31,30 @@ def _yarn_repository_impl(ctx):
 
     # Rename and move scoped modules with invalid bazel labels
     for module in modules_path.readdir():
-      if module.basename.startswith("@"):
-        for scoped_module in module.readdir():
-          execute(ctx, ["mv", scoped_module, "%s/%s" % (modules_path, mangle_package_name(module.basename, scoped_module.basename))])
-        execute(ctx, ["rm", "-rf", module])
+        if module.basename.startswith("@"):
+            for scoped_module in module.readdir():
+                execute(ctx, ["mv", scoped_module, "%s/%s" % (modules_path, mangle_package_name(module.basename, scoped_module.basename))])
+            execute(ctx, ["rm", "-rf", module])
 
     if ctx.attr.seal:
         ctx.file(
-        "BUILD",
-        """package(default_visibility = ["//visibility:public"])
+            "BUILD",
+            """package(default_visibility = ["//visibility:public"])
 load("@com_happyco_rules_node//node:rules.bzl", "sealed_module_group")
 
 sealed_module_group(name = "node_modules", srcs = glob(include = ["node_modules/*"], exclude = ["node_modules/.*"], exclude_directories = 0))
 """,
-        executable = False,
+            executable = False,
         )
     else:
         modules = []
         for module in modules_path.readdir():
-            if module.basename.startswith("."): continue
+            if module.basename.startswith("."):
+                continue
             modules.append("//%s:node_module" % (module.basename))
             init_module(ctx, module)
 
-        execute(ctx, ["rm", "-rf", modules_path, cache_path])
+        execute(ctx, ["rm", "-rf", modules_path])
         ctx.file(
             "BUILD",
             """package(default_visibility = ["//visibility:public"])
@@ -82,6 +84,7 @@ yarn_repository = repository_rule(
         "indeps": attr.string_list_dict(),
         "postinstall": attr.string_list(),
         "seal": attr.bool(),
+        "use_global_yarn_cache": attr.bool(default = True),
         "_node": attr.label(
             default = Label("@com_happyco_rules_node_toolchain//:bin/node"),
             single_file = True,
