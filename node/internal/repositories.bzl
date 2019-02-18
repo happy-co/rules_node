@@ -6,16 +6,15 @@ exports_files(["bin/node", "bin/npm", "bin/tsc", "bin/yarn", "bin/bower"])
 """
 
 def _mirror_path(ctx, workspace_root, path):
-  src = '/'.join([workspace_root, path])
-  dst = '/'.join([ctx.path('.'), path])
-  ctx.symlink(src, dst)
-
+    src = "/".join([workspace_root, path])
+    dst = "/".join([ctx.path("."), path])
+    ctx.symlink(src, dst)
 
 def _node_toolchain_impl(ctx):
     os = ctx.os.name
-    if os == 'linux':
+    if os == "linux":
         noderoot = ctx.path(ctx.attr._linux).dirname
-    elif os == 'mac os x':
+    elif os == "mac os x":
         noderoot = ctx.path(ctx.attr._darwin).dirname
     else:
         fail("Unsupported operating system: " + os)
@@ -33,7 +32,6 @@ def _node_toolchain_impl(ctx):
 
     ctx.file("WORKSPACE", "workspace(name = '%s')" % ctx.name)
     ctx.file("BUILD", NODE_TOOLCHAIN_BUILD_FILE)
-
 
 _node_toolchain = repository_rule(
     _node_toolchain_impl,
@@ -55,29 +53,32 @@ _node_toolchain = repository_rule(
     },
 )
 
-def node_repositories(node_version="8.11.4",
-                      linux_sha256="c69abe770f002a7415bd00f7ea13b086650c1dd925ef0c3bf8de90eabecc8790",
-                      darwin_sha256="aa1de83b388581d0d9ec3276f4526ee67e17e0f1bc0deb5133f960ce5dc9f1ef",
-                      npm_version="5.5.1",
-                      ts_version = "2.5.3",
-                      yarn_version = "1.2.1",
-                      bower_version = "1.8.2"):
-    native.new_http_archive(
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+def node_repositories(
+        node_version = "8.11.4",
+        linux_sha256 = "c69abe770f002a7415bd00f7ea13b086650c1dd925ef0c3bf8de90eabecc8790",
+        darwin_sha256 = "aa1de83b388581d0d9ec3276f4526ee67e17e0f1bc0deb5133f960ce5dc9f1ef",
+        npm_version = "5.5.1",
+        ts_version = "2.5.3",
+        yarn_version = "1.2.1",
+        bower_version = "1.8.2"):
+    http_archive(
         name = "nodejs_linux_amd64",
-        url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version=node_version),
+        url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version = node_version),
         type = "tar.gz",
-        strip_prefix = "node-v{version}-linux-x64".format(version=node_version),
+        strip_prefix = "node-v{version}-linux-x64".format(version = node_version),
         sha256 = linux_sha256,
-        build_file_content = "",
+        build_file_content = "exports_files([\"WORKSPACE\"])",
     )
 
-    native.new_http_archive(
+    http_archive(
         name = "nodejs_darwin_amd64",
-        url = "https://nodejs.org/dist/v{version}/node-v{version}-darwin-x64.tar.gz".format(version=node_version),
+        url = "https://nodejs.org/dist/v{version}/node-v{version}-darwin-x64.tar.gz".format(version = node_version),
         type = "tar.gz",
-        strip_prefix = "node-v{version}-darwin-x64".format(version=node_version),
+        strip_prefix = "node-v{version}-darwin-x64".format(version = node_version),
         sha256 = darwin_sha256,
-        build_file_content = "",
+        build_file_content = "exports_files([\"WORKSPACE\"])",
     )
 
     _node_toolchain(
