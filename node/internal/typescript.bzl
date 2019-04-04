@@ -1,6 +1,6 @@
-_ts_filetype = FileType([".ts", ".tsx"])
+_ts_filetype = [".ts", ".tsx"]
 
-load("//node:internal/node_utils.bzl", "node_install", "NodeModule", "package_rel_path")
+load("//node:internal/node_utils.bzl", "NodeModule", "node_install", "package_rel_path")
 
 def _ts_compile_impl(ctx):
     node = ctx.file._node
@@ -20,11 +20,15 @@ def _ts_compile_impl(ctx):
         short_path = package_rel_path(ctx, src)
         dst = "%s/%s/%s" % (ctx.bin_dir.path, ctx.label.package, short_path)
         if short_path.endswith(".ts"):
-            outs += [ctx.new_file(short_path[:-3]+".d.ts"),
-                     ctx.new_file(short_path[:-3]+".js")]
+            outs += [
+                ctx.new_file(short_path[:-3] + ".d.ts"),
+                ctx.new_file(short_path[:-3] + ".js"),
+            ]
         else:
-            outs += [ctx.new_file(short_path[:-4]+".d.ts"),
-                     ctx.new_file(short_path[:-4]+".jsx")]
+            outs += [
+                ctx.new_file(short_path[:-4] + ".d.ts"),
+                ctx.new_file(short_path[:-4] + ".jsx"),
+            ]
         staged_srcs += [dst]
         cmds.append("mkdir -p %s && cp -f %s %s" % (dst[:dst.rindex("/")], src.path, dst))
 
@@ -34,7 +38,8 @@ def _ts_compile_impl(ctx):
         "--declaration",
         "--sourceMap",
         "--moduleResolution node",
-        "--target", ctx.attr.target,
+        "--target",
+        ctx.attr.target,
         "--strict" if ctx.attr.strict else "",
         "--noImplicitAny" if ctx.attr.noImplicitAny else "",
         "--removeComments" if ctx.attr.removeComments else "",
@@ -64,7 +69,7 @@ def _ts_compile_impl(ctx):
         DefaultInfo(
             files = outs,
             runfiles = ctx.runfiles([], outs, collect_data = True),
-        )
+        ),
     ]
 
 ts_compile = rule(
@@ -79,7 +84,7 @@ ts_compile = rule(
         ),
         "target": attr.string(
             default = "ES3",
-            values = ["ES3", "ES5", "ES6", "ES2015", "ES2016", "ES2017", "ESNext"]
+            values = ["ES3", "ES5", "ES6", "ES2015", "ES2016", "ES2017", "ESNext"],
         ),
         "strict": attr.bool(),
         "noImplicitAny": attr.bool(),
