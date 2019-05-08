@@ -1,4 +1,5 @@
 load("//node:internal/node_utils.bzl", "execute")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 NODE_TOOLCHAIN_BUILD_FILE = """
 package(default_visibility = [ "//visibility:public" ])
@@ -52,8 +53,6 @@ _node_toolchain = repository_rule(
         ),
     },
 )
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def node_repositories(
         node_version = "8.11.4",

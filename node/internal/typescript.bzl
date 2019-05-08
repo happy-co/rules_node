@@ -1,6 +1,7 @@
-_ts_filetype = [".ts", ".tsx"]
-
 load("//node:internal/node_utils.bzl", "NodeModule", "node_install", "package_rel_path")
+load("//node:internal/node_library.bzl", "node_library")
+
+_ts_filetype = [".ts", ".tsx"]
 
 def _ts_compile_impl(ctx):
     node = ctx.file._node
@@ -120,8 +121,6 @@ ts_compile = rule(
         ),
     },
 )
-
-load("//node:internal/node_library.bzl", "node_library")
 
 def ts_library(name, ts_srcs, node_srcs, deps = [], package_name = None, **kwargs):
     ts_compile(name = name + "_ts", srcs = ts_srcs, deps = deps, **kwargs)

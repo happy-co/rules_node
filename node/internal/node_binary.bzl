@@ -1,3 +1,5 @@
+load("//node:internal/node_utils.bzl", "ModuleGroup", "NodeModule", "get_modules", "node_install", "package_rel_path")
+
 BASH_TEMPLATE = """#!/usr/bin/env bash
 set -e
 
@@ -14,8 +16,6 @@ export NODE_PATH=$ROOT/{node_path}
 
 exec "$ROOT/{script_path}" $@
 """
-
-load("//node:internal/node_utils.bzl", "ModuleGroup", "NodeModule", "get_modules", "node_install", "package_rel_path")
 
 def node_binary_impl(ctx):
     modules_path = ctx.actions.declare_directory("node_modules", sibling = ctx.outputs.executable)
