@@ -9,7 +9,7 @@ NPM and Yarn.
 
 ## Getting started
 Put `rules_node` in your `WORKSPACE` and load the main repository dependencies.
-This will download the nodejs toolchain including `node` (6.x).
+This will download the nodejs toolchain including `node` (12.x).
 
 ```python
 git_repository(
@@ -60,11 +60,11 @@ Version defaults are as follows:
 
 | Tool | Version |
 | :--- | :------ |
-| node | 8.11.4 |
-| npm | 5.5.1 |
-| yarn | 1.2.1 |
-| bower | 1.8.2 |
-| typescript | 2.5.3 |
+| node | 12.17.0 |
+| npm | 6.14.5 |
+| yarn | 1.22.4 |
+| bower | 1.8.8 |
+| typescript | 3.7.2 |
 
 ## npm_repository
 Load a set of npm dependencies as node_libraries in an external workspace.
@@ -77,8 +77,8 @@ load("@com_happyco_rules_node//node:rules.bzl", "npm_repository")
 npm_repository(
     name = "npm_react_stack",
     deps = {
-        "react": "15.3.2",
-        "react-dom": "15.3.2",
+        "react": "16.13.0",
+        "react-dom": "16.13.0",
     },
 )
 ```

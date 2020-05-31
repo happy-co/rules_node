@@ -55,13 +55,13 @@ _node_toolchain = repository_rule(
 )
 
 def node_repositories(
-        node_version = "8.11.4",
-        linux_sha256 = "c69abe770f002a7415bd00f7ea13b086650c1dd925ef0c3bf8de90eabecc8790",
-        darwin_sha256 = "aa1de83b388581d0d9ec3276f4526ee67e17e0f1bc0deb5133f960ce5dc9f1ef",
-        npm_version = "5.5.1",
-        ts_version = "2.5.3",
-        yarn_version = "1.2.1",
-        bower_version = "1.8.2"):
+        node_version = "12.17.0",
+        linux_sha256 = "582b66031fafdb77b0c897eaac522d55721df49555fe45de7bc207af443c4f73",
+        darwin_sha256 = "8c3b9459462b8adaa10549f4da6a5ff5cdfaf7140a8a8020a87cc96d79022cc0",
+        npm_version = "6.14.5",
+        ts_version = "3.7.2",
+        yarn_version = "1.22.4",
+        bower_version = "1.8.8"):
     http_archive(
         name = "nodejs_linux_amd64",
         url = "https://nodejs.org/dist/v{version}/node-v{version}-linux-x64.tar.gz".format(version = node_version),
