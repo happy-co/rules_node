@@ -21,10 +21,43 @@ def _node_build_impl(ctx):
         if src.path != dst:
             cmds.append("cp -aLf %s %s" % (src.path, dst))
 
+    env = []
+    for k, v in ctx.attr.env.items():
+        env.append("%s='%s'" % (k, v))
+
+    run_cmd = []
+    extra_inputs = []
+    if env and ctx.info_file and ctx.version_file:
+        script_template = ctx.actions.declare_file("env.sh.tmpl")
+        script_content = []
+        for i in env:
+            script_content.append("export %s" % i)
+        ctx.actions.write(script_template, "\n".join(script_content))
+
+        script = ctx.actions.declare_file("env.sh")
+        ctx.actions.run_shell(
+            mnemonic = "NodeBuildExpandEnv",
+            inputs = [script_template, ctx.info_file, ctx.version_file, ctx.executable._expand_template, ctx.executable._node],
+            outputs = [script],
+            command = "%s %s %s %s %s %s" % (
+                ctx.executable._node.path,
+                ctx.executable._expand_template.path,
+                ctx.info_file.path,
+                ctx.version_file.path,
+                script_template.path,
+                script.path,
+            ),
+        )
+
+        cmds.append("source %s" % script.path)
+        extra_inputs.append(script)
+    else:
+        run_cmd.extend(env)
+
     cmds.append("export HOME=`pwd`")
     cmds.append("cd %s" % (modules_path.dirname))
 
-    run_cmd = [
+    run_cmd.extend([
         "PATH=$PATH",
         "$HOME/%s" % (node.path),
         "$HOME/%s" % (npm.path),
@@ -33,11 +66,9 @@ def _node_build_impl(ctx):
         "--offline",
         "--no-update-notifier",
         "--scripts-prepend-node-path",
-    ]
+    ])
 
     cmds.append(" ".join(run_cmd))
-
-    #print("cmds: \n%s" % "\n".join(cmds))
 
     deps = depset()
     for d in modules:
@@ -45,7 +76,7 @@ def _node_build_impl(ctx):
 
     ctx.actions.run_shell(
         mnemonic = "NodeBuild",
-        inputs = [node, npm] + ctx.files.srcs + deps.to_list() + inst.inputs,
+        inputs = [node, npm] + ctx.files.srcs + deps.to_list() + inst.inputs + extra_inputs,
         outputs = ctx.outputs.outs,
         command = " && ".join(cmds),
     )
@@ -72,6 +103,7 @@ node_build = rule(
                 [ModuleGroup],
             ],
         ),
+        "env": attr.string_dict(),
         "script": attr.string(default = "build"),
         "outs": attr.output_list(),
         "_node": attr.label(
@@ -94,6 +126,13 @@ node_build = rule(
             allow_files = True,
             executable = True,
             cfg = "host",
+        ),
+        "_expand_template": attr.label(
+            default=Label("//node/tools:expand_template.js"),
+            single_file = True,
+            allow_files = True,
+            executable = True,
+            cfg="host",
         ),
     },
 )

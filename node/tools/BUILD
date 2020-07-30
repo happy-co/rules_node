@@ -1,4 +1,4 @@
-exports_files(["link_bins.js", "deps.js"])
+exports_files(["link_bins.js", "deps.js", "expand_template.js"])
 
 sh_binary(
     name = "deps",

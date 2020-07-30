@@ -267,6 +267,13 @@ This rule allows running arbitrary node scripts to produce a build. By default
 executes the `build` script, but this can be overridden with the `script`
 attribute.
 
+Environment variables can be passed to the build process by specifying `env`.
+This attribute supports
+[stamping](https://docs.bazel.build/versions/master/user-manual.html#workspace_status),
+allowing the outputs of the program specified by `--workspace_status_command`
+to be substituted by wrapping the variable name in braces as the environment
+value (see example).
+
 ```python
 load("@com_happyco_rules_node//node:rules.bzl", "node_build")
 
@@ -276,6 +283,7 @@ node_build(
     name = "script",
     srcs = ["package.json"],
     outs = ["dist"],
+    env = {"BUILD_SCM_REVISION": "{STABLE_SCM_REVISION}"},
     deps = [
         "@yarn-baz//:node_modules",
         "//examples/baz:node_module",
